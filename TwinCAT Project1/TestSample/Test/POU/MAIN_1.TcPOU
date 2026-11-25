@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.21">
+  <POU Name="MAIN_1" Id="{dae97adb-0ba1-4975-a175-8698335d6946}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN_1
+VAR
+    fbCloseAll : FB_SocketCloseAll;   // closes stale sockets after download / restart
+    bInitDone  : BOOL;
+    bEnable    : BOOL := TRUE;
+    fbTest     : FB_VC_LinkTest;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Once at startup. NOTE: closes ALL TF6310 sockets of this runtime.
+IF NOT bInitDone THEN
+    fbCloseAll(sSrvNetId := '', bExecute := TRUE, tTimeout := T#5S);
+    IF NOT fbCloseAll.bBusy THEN
+        fbCloseAll(bExecute := FALSE);
+        bInitDone := TRUE;
+    END_IF
+END_IF
+
+fbTest(bEnable := bEnable AND bInitDone);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

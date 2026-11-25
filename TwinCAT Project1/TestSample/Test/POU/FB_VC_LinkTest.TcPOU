@@ -1,0 +1,121 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.21">
+  <POU Name="FB_VC_LinkTest" Id="{677af4c9-2585-4b2e-8ac8-2bac0418b379}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_VC_LinkTest
+// Test harness: one link, one App call, two PLC handlers. Order per cycle: link first, then method blocks.
+VAR_INPUT
+    bEnable          : BOOL;
+    nMode            : INT := 0;                    // 0 = PLC connects (VisionCore Listen), 1 = PLC listens
+    sRemoteAddress   : STRING(15) := '127.0.0.1';   // VisionCore on the same PC
+    nPort            : UINT := 5100;
+    sClientId        : STRING(31) := 'Line1_Plc';   // must match VisionCore PlcLinkDevice config
+    bStartInspection : BOOL;                        // set TRUE online -> one call
+    bAbortInspection : BOOL;
+    nRecipeId        : UINT := 1;
+    sPartId          : STRING(31) := 'TEST_0001';
+    bAcceptMove      : BOOL := TRUE;                // MoveToPosition answer
+END_VAR
+VAR_OUTPUT
+    eLinkState     : E_VC_LinkState;
+    bConnected     : BOOL;
+    bOnline        : BOOL;
+    bRestricted    : BOOL;
+    nLinkErrorId   : UINT;
+    bInspBusy      : BOOL;
+    bInspDone      : BOOL;
+    nInspErrorId   : UINT;
+    stInspResult   : ST_VC_InspectionResult;
+    nMoveRequests  : UDINT;
+    lrLastPosition : LREAL;
+    nStateReports  : UDINT;
+    nVisionState   : UINT;
+    nVisionAlarm   : DINT;
+END_VAR
+VAR
+    fbLink        : VC_Link;
+    fbInspect     : VC_Call_StartInspection;
+    fbMove        : VC_Handle_MoveToPosition;
+    fbModuleState : VC_Handle_ReportModuleState;
+    bRespondMove  : BOOL;
+    bRespondState : BOOL;
+    stMoveResult  : ST_VC_MoveToPositionResult;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[THIS^.RunLink();
+THIS^.CallInspection();
+THIS^.HandleMove();
+THIS^.HandleModuleState();]]></ST>
+    </Implementation>
+    <Method Name="CallInspection" Id="{3d4acc32-4514-4230-a74a-0caf238b2f94}">
+      <Declaration><![CDATA[METHOD PRIVATE CallInspection]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[fbInspect(Execute   := bStartInspection,
+          Abort     := bAbortInspection,
+          RecipeId  := nRecipeId,
+          PartId    := sPartId,
+          TimeoutMs := 0,
+          Link      := GVL_VC.LinkData);
+bInspBusy := fbInspect.Busy;
+IF fbInspect.Busy THEN
+    bInspDone    := FALSE;
+    nInspErrorId := 0;
+END_IF
+IF fbInspect.Done THEN
+    bInspDone        := TRUE;
+    stInspResult     := fbInspect.Result;
+    bStartInspection := FALSE;
+ELSIF fbInspect.Error THEN
+    nInspErrorId     := fbInspect.ErrorId;
+    bStartInspection := FALSE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="HandleModuleState" Id="{649ca250-cbf9-4cea-9ee0-4951aeb21c82}">
+      <Declaration><![CDATA[METHOD PRIVATE HandleModuleState]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[fbModuleState(Respond        := bRespondState,
+              ResponseStatus := VC_STATUS_OK,
+              Link           := GVL_VC.LinkData);
+IF fbModuleState.NewRequest AND NOT bRespondState THEN
+    nVisionState  := fbModuleState.Args.State;     // -> PackML tags
+    nVisionAlarm  := fbModuleState.Args.AlarmId;
+    nStateReports := nStateReports + 1;
+END_IF
+bRespondState := fbModuleState.NewRequest AND NOT bRespondState;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="HandleMove" Id="{94317b26-7e30-4cc2-8c60-f017fc9984ce}">
+      <Declaration><![CDATA[METHOD PRIVATE HandleMove
+// Answers one cycle after NewRequest so Respond gets a clean rising edge.]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[stMoveResult.Accepted := bAcceptMove;
+fbMove(Respond        := bRespondMove,
+       ResponseStatus := SEL(fbMove.CancelRequested, VC_STATUS_OK, VC_STATUS_CANCELLED),
+       Result         := stMoveResult,
+       Link           := GVL_VC.LinkData);
+IF fbMove.NewRequest AND NOT bRespondMove THEN
+    lrLastPosition := fbMove.Args.Position;   // real cell: start axis here, answer when accepted
+    nMoveRequests  := nMoveRequests + 1;
+END_IF
+bRespondMove := fbMove.NewRequest AND NOT bRespondMove;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="RunLink" Id="{4dd0e148-70ef-4a9e-af08-00bdae30df79}">
+      <Declaration><![CDATA[METHOD PRIVATE RunLink]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[fbLink(Enable        := bEnable,
+       Mode          := nMode,
+       RemoteAddress := sRemoteAddress,
+       RemotePort    := nPort,
+       LocalPort     := nPort,
+       ClientId      := sClientId,
+       Link          := GVL_VC.LinkData);
+eLinkState   := fbLink.State;
+bConnected   := fbLink.Connected;
+bOnline      := fbLink.Online;
+bRestricted  := fbLink.Restricted;
+nLinkErrorId := fbLink.ErrorId;      // kept until ONLINE again]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

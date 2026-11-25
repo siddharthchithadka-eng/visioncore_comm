@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_MethodIndex" Id="{1e821635-42ce-49c6-bf11-4e006941f504}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_MethodIndex : INT
+// Returns the method index for MethodId/Provider, or -1.
+VAR_INPUT
+    MethodId : UINT;
+    Provider : USINT;
+END_VAR
+VAR
+    i : UINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[VC_MethodIndex := -1;
+i := 0;
+WHILE (i < VC_METHOD_COUNT) AND (i < VC_MAX_METHODS) DO
+    IF (VC_METHODS[i].MethodId = MethodId) AND (VC_METHODS[i].Provider = Provider) THEN
+        VC_MethodIndex := UINT_TO_INT(i);
+        RETURN;
+    END_IF
+    i := i + 1;
+END_WHILE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

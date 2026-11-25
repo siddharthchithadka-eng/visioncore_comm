@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_PutRaw" Id="{ed90ecda-ce31-4515-a78c-ddffedeb4edb}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_PutRaw : BOOL
+// Copies Size bytes from pSrc into Buf[Pos..] and advances Pos. Bounds-checked.
+VAR_IN_OUT
+    Buf  : ARRAY[*] OF BYTE;
+    Pos  : UDINT;
+END_VAR
+VAR_INPUT
+    pSrc : PVOID;
+    Size : UDINT;
+END_VAR
+VAR
+    nHigh : DINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF Size = 0 THEN
+    VC_PutRaw := TRUE;
+    RETURN;
+END_IF
+nHigh := UPPER_BOUND(Buf, 1);
+IF (LOWER_BOUND(Buf, 1) <> 0) OR (pSrc = 0) OR (nHigh < 0) OR ((Pos + Size) > (DINT_TO_UDINT(nHigh) + 1)) THEN
+    VC_PutRaw := FALSE;
+    RETURN;
+END_IF
+MEMCPY(destAddr := ADR(Buf[Pos]), srcAddr := pSrc, n := Size);
+Pos := Pos + Size;
+VC_PutRaw := TRUE;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

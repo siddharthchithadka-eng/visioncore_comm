@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_IsCallable" Id="{299b9751-23ea-47f3-b0f4-14c04dd7c427}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_IsCallable : UINT
+// 0 = callable App method. Else 1 UnknownMethod, 8 ConnectionLost, 2 MethodIncompatible, 3 NotAllowed.
+VAR_IN_OUT
+    Link        : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    MethodIndex : UINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF (MethodIndex >= VC_METHOD_COUNT) OR (MethodIndex >= VC_MAX_METHODS) THEN
+    VC_IsCallable := VC_STATUS_UNKNOWN_METHOD;
+ELSIF VC_METHODS[MethodIndex].Provider <> VC_PROVIDER_APP THEN
+    VC_IsCallable := VC_STATUS_UNKNOWN_METHOD;
+ELSIF NOT Link.Online THEN
+    VC_IsCallable := VC_STATUS_CONNECTION_LOST;
+ELSIF Link.MethodState[MethodIndex] = 1 THEN
+    VC_IsCallable := VC_STATUS_OK;
+ELSIF Link.MethodState[MethodIndex] = 3 THEN
+    VC_IsCallable := VC_STATUS_NOT_ALLOWED;
+ELSE
+    VC_IsCallable := VC_STATUS_METHOD_INCOMPATIBLE;   // 0 unknown or 2 hash mismatch
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

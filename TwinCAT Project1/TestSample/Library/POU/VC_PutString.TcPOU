@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_PutString" Id="{ef26c173-e562-4400-87cb-3d40ab09496c}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_PutString : BOOL
+// Writes a fixed-length wire string: Len bytes ASCII, padded with 0.
+VAR_IN_OUT
+    Buf   : ARRAY[*] OF BYTE;
+    Pos   : UDINT;
+END_VAR
+VAR_IN_OUT CONSTANT
+    Value : STRING;
+END_VAR
+VAR_INPUT
+    Len   : UDINT;      // wire length N from the interface definition
+END_VAR
+VAR
+    nHigh : DINT;
+    nCopy : UDINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF Len = 0 THEN
+    VC_PutString := TRUE;
+    RETURN;
+END_IF
+nHigh := UPPER_BOUND(Buf, 1);
+IF (LOWER_BOUND(Buf, 1) <> 0) OR (nHigh < 0) OR ((Pos + Len) > (DINT_TO_UDINT(nHigh) + 1)) THEN
+    VC_PutString := FALSE;
+    RETURN;
+END_IF
+MEMSET(destAddr := ADR(Buf[Pos]), fillByte := 0, n := Len);
+nCopy := MIN(INT_TO_UDINT(LEN(Value)), Len);
+IF nCopy > 0 THEN
+    MEMCPY(destAddr := ADR(Buf[Pos]), srcAddr := ADR(Value), n := nCopy);
+END_IF
+Pos := Pos + Len;
+VC_PutString := TRUE;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

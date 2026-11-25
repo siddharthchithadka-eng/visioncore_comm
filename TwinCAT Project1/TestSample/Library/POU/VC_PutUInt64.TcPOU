@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_PutUInt64" Id="{b4a81ef1-121c-4832-bc45-f8c74525f08c}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_PutUInt64 : BOOL
+// Writes UInt64 (8 byte, little-endian) at Buf[Pos] and advances Pos.
+VAR_IN_OUT
+    Buf   : ARRAY[*] OF BYTE;
+    Pos   : UDINT;
+END_VAR
+VAR_INPUT
+    Value : ULINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[VC_PutUInt64 := VC_PutRaw(Buf := Buf, Pos := Pos, pSrc := ADR(Value), Size := 8);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,276 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.21">
+  <POU Name="VC_Transport" Id="{9ff4cc69-fece-45c7-aafa-ab57e6362467}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK VC_Transport
+// Platform layer (Beckhoff TF6310 / Tc2_TcpIp). The only block that touches sockets.
+// Receive goes via an internal buffer and is appended to Link.RxBuffer when complete,
+// so VC_Framer may shift RxBuffer while a receive is in flight.
+VAR_INPUT
+    Open          : BOOL;          // connect / accept while TRUE, close when FALSE
+    Mode          : INT;           // 0 = connect actively, 1 = listen
+    RemoteAddress : STRING(15);
+    RemotePort    : UINT;
+    LocalPort     : UINT;
+    SendRequest   : BOOL;          // rising edge: send SendLen bytes of Link.TxFrame
+    SendLen       : UDINT;
+END_VAR
+VAR_IN_OUT
+    Link          : ST_VC_LinkData;
+END_VAR
+VAR_OUTPUT
+    Connected     : BOOL;
+    SendBusy      : BOOL;
+    SendDone      : BOOL;          // one cycle
+    ReceivedBytes : UDINT;         // bytes appended this cycle
+    Error         : BOOL;          // latched until next rising edge of Open
+    ErrorId       : UINT;          // VC_ERR_CONNECT / VC_ERR_SEND / VC_ERR_RECEIVE
+    Status        : DWORD;         // raw nErrId
+    Idle          : BOOL;          // all handles closed, nothing pending
+END_VAR
+VAR
+    fbConnect     : FB_SocketConnect;
+    fbListen      : FB_SocketListen;
+    fbAccept      : FB_SocketAccept;
+    fbClose       : FB_SocketClose;
+    fbSend        : FB_SocketSend;
+    fbReceive     : FB_SocketReceive;
+    rOpen         : R_TRIG;
+    rSend         : R_TRIG;
+    hSocket       : T_HSOCKET;
+    hListener     : T_HSOCKET;
+    bSocketOpen   : BOOL;
+    bListenerOpen : BOOL;
+    bRecvBusy     : BOOL;
+    nStep         : INT;
+    aRxTemp       : ARRAY[0..VC_HEADER_LEN + VC_MAX_PAYLOAD - 1] OF BYTE;
+END_VAR
+VAR CONSTANT
+    STEP_IDLE           : INT := 0;
+    STEP_CONNECT        : INT := 10;
+    STEP_LISTEN         : INT := 20;
+    STEP_ACCEPT         : INT := 21;
+    STEP_CONNECTED      : INT := 30;
+    STEP_CLOSE_SOCKET   : INT := 40;
+    STEP_CLOSE_LISTENER : INT := 41;
+    STEP_WAIT_PENDING   : INT := 42;
+    RX_TEMP_LEN         : UDINT := VC_HEADER_LEN + VC_MAX_PAYLOAD;
+    TMO                 : TIME := T#5S;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rOpen(CLK := Open);
+rSend(CLK := SendRequest);
+SendDone      := FALSE;
+ReceivedBytes := 0;
+
+IF rOpen.Q THEN
+    Error   := FALSE;
+    ErrorId := 0;
+    Status  := 0;
+END_IF
+
+CASE nStep OF
+STEP_IDLE:
+    IF Open AND NOT Error THEN
+        IF Mode = 0 THEN
+            nStep := STEP_CONNECT;
+        ELSE
+            nStep := STEP_LISTEN;
+        END_IF
+    END_IF
+
+STEP_CONNECT:
+    fbConnect(sSrvNetId := '', sRemoteHost := RemoteAddress, nRemotePort := RemotePort,
+              bExecute := TRUE, tTimeout := TMO);
+    IF NOT fbConnect.bBusy THEN
+        fbConnect(bExecute := FALSE);
+        IF fbConnect.bError THEN
+            THIS^.RaiseError(Id := VC_ERR_CONNECT, Raw := fbConnect.nErrId);
+            nStep := STEP_CLOSE_SOCKET;
+        ELSE
+            hSocket     := fbConnect.hSocket;
+            bSocketOpen := TRUE;
+            nStep       := STEP_CONNECTED;
+        END_IF
+    END_IF
+
+STEP_LISTEN:
+    fbListen(sSrvNetId := '', sLocalHost := '', nLocalPort := LocalPort,
+             bExecute := TRUE, tTimeout := TMO);
+    IF NOT fbListen.bBusy THEN
+        fbListen(bExecute := FALSE);
+        IF fbListen.bError THEN
+            THIS^.RaiseError(Id := VC_ERR_CONNECT, Raw := fbListen.nErrId);
+            nStep := STEP_CLOSE_SOCKET;
+        ELSE
+            hListener     := fbListen.hListener;
+            bListenerOpen := TRUE;
+            nStep         := STEP_ACCEPT;
+        END_IF
+    END_IF
+
+STEP_ACCEPT:
+    IF NOT Open THEN
+        nStep := STEP_CLOSE_SOCKET;
+    ELSE
+        // Re-triggered every second cycle until a client connects
+        fbAccept(sSrvNetId := '', hListener := hListener, bExecute := TRUE, tTimeout := TMO);
+        IF NOT fbAccept.bBusy THEN
+            fbAccept(bExecute := FALSE);
+            IF fbAccept.bError THEN
+                THIS^.RaiseError(Id := VC_ERR_CONNECT, Raw := fbAccept.nErrId);
+                nStep := STEP_CLOSE_SOCKET;
+            ELSIF fbAccept.bAccepted THEN
+                hSocket     := fbAccept.hSocket;
+                bSocketOpen := TRUE;
+                nStep       := STEP_CONNECTED;
+            END_IF
+        END_IF
+    END_IF
+
+STEP_CONNECTED:
+    IF NOT Open THEN
+        nStep := STEP_CLOSE_SOCKET;
+    ELSE
+        THIS^.ServiceSend(stLink := Link);
+        IF nStep = STEP_CONNECTED THEN
+            THIS^.ServiceReceive(stLink := Link);
+        END_IF
+    END_IF
+
+STEP_CLOSE_SOCKET:
+    THIS^.DrainPending();
+    IF bSocketOpen THEN
+        fbClose(sSrvNetId := '', hSocket := hSocket, bExecute := TRUE, tTimeout := TMO);
+        IF NOT fbClose.bBusy THEN
+            fbClose(bExecute := FALSE);
+            bSocketOpen := FALSE;            // handle is gone even if close reported an error
+            nStep := STEP_CLOSE_LISTENER;
+        END_IF
+    ELSE
+        nStep := STEP_CLOSE_LISTENER;
+    END_IF
+
+STEP_CLOSE_LISTENER:
+    THIS^.DrainPending();
+    IF bListenerOpen THEN
+        fbClose(sSrvNetId := '', hSocket := hListener, bExecute := TRUE, tTimeout := TMO);
+        IF NOT fbClose.bBusy THEN
+            fbClose(bExecute := FALSE);
+            bListenerOpen := FALSE;
+            nStep := STEP_WAIT_PENDING;
+        END_IF
+    ELSE
+        nStep := STEP_WAIT_PENDING;
+    END_IF
+
+STEP_WAIT_PENDING:
+    THIS^.DrainPending();
+    IF NOT (fbSend.bBusy OR fbReceive.bBusy OR fbAccept.bBusy OR fbConnect.bBusy OR fbListen.bBusy) THEN
+        SendBusy  := FALSE;
+        bRecvBusy := FALSE;
+        nStep     := STEP_IDLE;
+    END_IF
+END_CASE
+
+Connected := (nStep = STEP_CONNECTED);
+Idle      := (nStep = STEP_IDLE);]]></ST>
+    </Implementation>
+    <Method Name="DrainPending" Id="{d44555bc-7ed1-4ad8-a0a1-bd2944192fa1}">
+      <Declaration><![CDATA[METHOD PRIVATE DrainPending
+// Keeps running ADS requests alive with bExecute = FALSE until they finish.]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF fbSend.bBusy THEN fbSend(bExecute := FALSE); END_IF
+IF fbReceive.bBusy THEN fbReceive(bExecute := FALSE); END_IF
+IF fbAccept.bBusy THEN fbAccept(bExecute := FALSE); END_IF
+IF fbConnect.bBusy THEN fbConnect(bExecute := FALSE); END_IF
+IF fbListen.bBusy THEN fbListen(bExecute := FALSE); END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="RaiseError" Id="{fd144b91-f2a4-4c64-8a12-3babd19019ee}">
+      <Declaration><![CDATA[METHOD PRIVATE RaiseError
+VAR_INPUT
+    Id  : UINT;
+    Raw : UDINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Error   := TRUE;
+ErrorId := Id;
+Status  := UDINT_TO_DWORD(Raw);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ServiceReceive" Id="{68fc7007-70df-4f0b-baa4-cad44efb0ec5}">
+      <Declaration><![CDATA[METHOD PRIVATE ServiceReceive
+VAR_IN_OUT
+    stLink : ST_VC_LinkData;
+END_VAR
+VAR
+    nFree : UDINT;
+    nRec  : UDINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// 1. Poll a running receive
+IF bRecvBusy THEN
+    fbReceive(bExecute := TRUE);
+    IF NOT fbReceive.bBusy THEN
+        fbReceive(bExecute := FALSE);
+        bRecvBusy := FALSE;
+        IF fbReceive.bError THEN
+            THIS^.RaiseError(Id := VC_ERR_RECEIVE, Raw := fbReceive.nErrId);
+            nStep := STEP_CLOSE_SOCKET;
+            RETURN;
+        END_IF
+        nRec := fbReceive.nRecBytes;
+        IF nRec > 0 THEN
+            IF (stLink.RxFill + nRec) <= VC_RX_BUFFER THEN
+                MEMCPY(destAddr := ADR(stLink.RxBuffer[stLink.RxFill]), srcAddr := ADR(aRxTemp), n := nRec);
+                stLink.RxFill := stLink.RxFill + nRec;
+                ReceivedBytes := nRec;
+            ELSE
+                THIS^.RaiseError(Id := VC_ERR_RECEIVE, Raw := 0);   // overflow, cannot happen with valid framing
+                nStep := STEP_CLOSE_SOCKET;
+                RETURN;
+            END_IF
+        END_IF
+    END_IF
+END_IF
+
+// 2. Start the next receive (non-blocking, returns 0 bytes if nothing is there)
+IF NOT bRecvBusy THEN
+    nFree := MIN(VC_RX_BUFFER - stLink.RxFill, RX_TEMP_LEN);
+    IF nFree > 0 THEN
+        fbReceive(sSrvNetId := '', hSocket := hSocket, cbLen := nFree,
+                  pDest := ADR(aRxTemp), bExecute := TRUE, tTimeout := TMO);
+        bRecvBusy := TRUE;
+    END_IF
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ServiceSend" Id="{fe1ab080-326e-468a-a226-6769db9b9101}">
+      <Declaration><![CDATA[METHOD PRIVATE ServiceSend
+VAR_IN_OUT
+    stLink : ST_VC_LinkData;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF SendBusy THEN
+    fbSend(bExecute := TRUE);
+    IF NOT fbSend.bBusy THEN
+        fbSend(bExecute := FALSE);
+        SendBusy := FALSE;
+        IF fbSend.bError THEN
+            THIS^.RaiseError(Id := VC_ERR_SEND, Raw := fbSend.nErrId);
+            nStep := STEP_CLOSE_SOCKET;
+        ELSE
+            SendDone := TRUE;
+        END_IF
+    END_IF
+ELSIF rSend.Q THEN
+    IF (SendLen > 0) AND (SendLen <= (VC_HEADER_LEN + VC_MAX_PAYLOAD)) THEN
+        fbSend(sSrvNetId := '', hSocket := hSocket, cbLen := SendLen,
+               pSrc := ADR(stLink.TxFrame), bExecute := TRUE, tTimeout := TMO);
+        SendBusy := TRUE;
+    END_IF
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

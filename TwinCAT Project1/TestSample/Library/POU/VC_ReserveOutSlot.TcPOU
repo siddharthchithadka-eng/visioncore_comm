@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_ReserveOutSlot" Id="{38ac4c8a-f172-4252-8cdc-b50098a94d1b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_ReserveOutSlot : INT
+// First FREE out slot -> RESERVED. Returns slot or -1.
+VAR_IN_OUT
+    Link        : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    MethodIndex : UINT;
+END_VAR
+VAR
+    i : UINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[VC_ReserveOutSlot := -1;
+FOR i := 0 TO VC_MAX_CALLS - 1 DO
+    IF Link.OutSlots[i].State = VC_SS_FREE THEN
+        Link.OutSlots[i].State       := VC_SS_RESERVED;
+        Link.OutSlots[i].MethodIndex := MethodIndex;
+        Link.OutSlots[i].OwnerSeenMs := Link.NowMs;
+        Link.OutSlots[i].CallId      := 0;
+        Link.OutSlots[i].Status      := VC_STATUS_OK;
+        Link.OutSlots[i].PayloadLen  := 0;
+        VC_ReserveOutSlot := UINT_TO_INT(i);
+        RETURN;
+    END_IF
+END_FOR]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

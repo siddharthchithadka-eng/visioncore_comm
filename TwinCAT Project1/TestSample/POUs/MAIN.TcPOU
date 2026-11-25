@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.21">
+  <POU Name="MAIN" Id="{2191db32-67ad-4b1c-9f64-f638f412023f}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+	btn:BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+// 
+// IF not btn THEN
+// ADSLOGSTR( msgCtrlMask := ADSLOG_MSGTYPE_ERROR OR ADSLOG_MSGTYPE_LOG ,
+//            msgFmtStr  := 'Hello %s',
+//            strArg     := 'world!' );
+// 		   btn :=TRUE;
+// END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

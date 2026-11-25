@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_TakeInSlot" Id="{33ec47d5-01c6-45ff-85d3-88ec075dc78f}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_TakeInSlot : INT
+// Oldest REQUEST slot of this method -> IN_PROGRESS. Returns slot or -1.
+VAR_IN_OUT
+    Link        : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    MethodIndex : UINT;
+END_VAR
+VAR
+    i       : UINT;
+    nBest   : INT;
+    nAge    : UDINT;
+    nBestAge: UDINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[nBest := -1;
+nBestAge := 0;
+FOR i := 0 TO VC_MAX_CALLS - 1 DO
+    IF (Link.InSlots[i].State = VC_SS_REQUEST) AND (Link.InSlots[i].MethodIndex = MethodIndex) THEN
+        nAge := Link.NowMs - Link.InSlots[i].ReceivedMs;
+        IF (nBest < 0) OR (nAge > nBestAge) THEN
+            nBest := UINT_TO_INT(i);
+            nBestAge := nAge;
+        END_IF
+    END_IF
+END_FOR
+IF nBest >= 0 THEN
+    Link.InSlots[nBest].State := VC_SS_IN_PROGRESS;
+END_IF
+VC_TakeInSlot := nBest;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

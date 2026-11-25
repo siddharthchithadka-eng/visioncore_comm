@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_GetRaw" Id="{b9a7fd6b-3010-4b41-8fa4-f3097a563758}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_GetRaw : BOOL
+// Copies Size bytes from Buf[Pos..] to pDst and advances Pos. Bounds-checked.
+VAR_IN_OUT
+    Buf  : ARRAY[*] OF BYTE;
+    Pos  : UDINT;
+END_VAR
+VAR_INPUT
+    pDst : PVOID;
+    Size : UDINT;
+END_VAR
+VAR
+    nHigh : DINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF Size = 0 THEN
+    VC_GetRaw := TRUE;
+    RETURN;
+END_IF
+nHigh := UPPER_BOUND(Buf, 1);
+IF (LOWER_BOUND(Buf, 1) <> 0) OR (pDst = 0) OR (nHigh < 0) OR ((Pos + Size) > (DINT_TO_UDINT(nHigh) + 1)) THEN
+    VC_GetRaw := FALSE;
+    RETURN;
+END_IF
+MEMCPY(destAddr := pDst, srcAddr := ADR(Buf[Pos]), n := Size);
+Pos := Pos + Size;
+VC_GetRaw := TRUE;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>
