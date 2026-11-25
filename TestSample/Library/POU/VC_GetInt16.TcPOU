@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_GetInt16" Id="{9afcec70-3467-4b46-a09f-ad4ad87d26f2}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_GetInt16 : INT
+// Reads Int16 (2 byte, little-endian) from Buf[Pos] and advances Pos.
+VAR_IN_OUT
+    Buf   : ARRAY[*] OF BYTE;
+    Pos   : UDINT;
+END_VAR
+VAR
+    nVal : INT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[nVal := 0;
+VC_GetRaw(Buf := Buf, Pos := Pos, pDst := ADR(nVal), Size := 2);
+VC_GetInt16 := nVal;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

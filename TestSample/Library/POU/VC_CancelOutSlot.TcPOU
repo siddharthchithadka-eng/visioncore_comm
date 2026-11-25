@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_CancelOutSlot" Id="{4c527cd3-6db3-4b1e-8f8e-e53bd85fea49}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_CancelOutSlot : BOOL
+// RESERVED/TX_PENDING -> DONE (Cancelled); SENT -> CANCEL_PENDING (Cancelled)
+VAR_IN_OUT
+    Link : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    Slot : INT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[VC_CancelOutSlot := FALSE;
+IF (Slot < 0) OR (Slot >= UINT_TO_INT(VC_MAX_CALLS)) THEN
+    RETURN;
+END_IF
+CASE Link.OutSlots[Slot].State OF
+    VC_SS_RESERVED, VC_SS_TX_PENDING:
+        Link.OutSlots[Slot].Status     := VC_STATUS_CANCELLED;
+        Link.OutSlots[Slot].PayloadLen := 0;
+        Link.OutSlots[Slot].State      := VC_SS_DONE;
+        VC_CancelOutSlot := TRUE;
+    VC_SS_SENT:
+        Link.OutSlots[Slot].Status     := VC_STATUS_CANCELLED;
+        Link.OutSlots[Slot].PayloadLen := 0;
+        Link.OutSlots[Slot].State      := VC_SS_CANCEL_PENDING;
+        VC_CancelOutSlot := TRUE;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

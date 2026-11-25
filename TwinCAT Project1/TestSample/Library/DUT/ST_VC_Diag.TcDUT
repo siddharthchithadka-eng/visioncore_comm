@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_VC_Diag" Id="{e3f8897d-e723-4661-aa8d-b8ba90151b12}">
+    <Declaration><![CDATA[TYPE ST_VC_Diag :
+STRUCT
+    RxMessages          : UDINT;
+    TxMessages          : UDINT;
+    ProtocolErrors      : UDINT;
+    Reconnects          : UDINT;
+    CallTimeouts        : UDINT;
+    RejectedCalls       : UDINT;
+    LastErrorId         : UINT;
+    LastErrorMs         : UDINT;
+    LastTransportStatus : DWORD;  // raw nErrId of the Tc2_TcpIp block
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

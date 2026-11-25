@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.21">
+  <POU Name="VC_Call_StartInspection" Id="{73936ce6-2fa4-4f77-8f2c-c137941cfa5a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK VC_Call_StartInspection
+// GENERATED (vcgen template, Bausteindesign 10.1). Calls App method 10 StartInspection.
+// PLCopen behaviour: rising edge Execute starts; Done/Error held while Execute, at least 1 cycle.
+VAR_INPUT
+    Execute   : BOOL;
+    Abort     : BOOL;
+    RecipeId  : UINT;
+    PartId    : STRING(31);
+    TimeoutMs : UDINT;            // 0 = value from method table
+END_VAR
+VAR_IN_OUT
+    Link      : ST_VC_LinkData;
+END_VAR
+VAR_OUTPUT
+    Busy      : BOOL;
+    Done      : BOOL;
+    Error     : BOOL;
+    ErrorId   : UINT;
+    Result    : ST_VC_InspectionResult;
+END_VAR
+VAR CONSTANT
+    METHOD_INDEX : UINT := VC_IDX_START_INSPECTION;
+END_VAR
+VAR
+    rExec : R_TRIG;
+    slot  : INT := -1;
+    step  : INT;
+    shown : BOOL;
+    pos   : UDINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rExec(CLK := Execute);
+
+CASE step OF
+0:  // ready
+    IF rExec.Q THEN
+        Done := FALSE; Error := FALSE; ErrorId := 0;
+        ErrorId := VC_IsCallable(Link := Link, MethodIndex := METHOD_INDEX);   // 0 = callable
+        IF ErrorId = 0 THEN
+            slot := VC_ReserveOutSlot(Link := Link, MethodIndex := METHOD_INDEX);
+            IF slot < 0 THEN
+                ErrorId := VC_STATUS_BUSY;
+            END_IF
+        END_IF
+        IF ErrorId <> 0 THEN
+            Error := TRUE; shown := FALSE; step := 2;
+        ELSE
+            // encode arguments (generated)
+            pos := 0;
+            VC_PutUInt16(Buf := Link.OutSlots[slot].Payload, Pos := pos, Value := RecipeId);
+            VC_PutString(Buf := Link.OutSlots[slot].Payload, Pos := pos, Value := PartId, Len := 32);
+            VC_SubmitOutSlot(Link := Link, Slot := slot, Len := pos, TimeoutMs := TimeoutMs);
+            Busy := TRUE;
+            step := 1;
+        END_IF
+    END_IF
+
+1:  // call running
+    IF (slot < 0) OR (Link.OutSlots[slot].State = VC_SS_FREE) THEN
+        // slot lost (block was not called for > VC_OWNER_TIMEOUT_MS)
+        Error := TRUE; ErrorId := VC_STATUS_INTERNAL_ERROR;
+        slot := -1; Busy := FALSE; shown := FALSE;
+        step := 2;
+    ELSE
+        Link.OutSlots[slot].OwnerSeenMs := Link.NowMs;
+        IF Abort THEN
+            VC_CancelOutSlot(Link := Link, Slot := slot);
+        END_IF
+        IF Link.OutSlots[slot].State = VC_SS_DONE THEN
+            IF Link.OutSlots[slot].Status = VC_STATUS_OK THEN
+                // decode result (generated)
+                pos := 0;
+                Result.Pass          := VC_GetBool(Buf := Link.OutSlots[slot].Payload, Pos := pos);
+                Result.ErrorCode     := VC_GetInt32(Buf := Link.OutSlots[slot].Payload, Pos := pos);
+                Result.MeasuredCount := VC_GetUInt16(Buf := Link.OutSlots[slot].Payload, Pos := pos);
+                VC_GetFloat32Array(Buf := Link.OutSlots[slot].Payload, Pos := pos, Arr := Result.Measured, Count := 16);
+                Done := TRUE;
+            ELSE
+                Error := TRUE;
+                ErrorId := Link.OutSlots[slot].Status;
+            END_IF
+            VC_ReleaseOutSlot(Link := Link, Slot := slot);
+            slot := -1; Busy := FALSE; shown := FALSE;
+            step := 2;
+        END_IF
+    END_IF
+
+2:  // show result, at least one cycle
+    IF NOT Execute AND shown THEN
+        Done := FALSE; Error := FALSE; ErrorId := 0;
+        step := 0;
+    END_IF
+    shown := TRUE;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

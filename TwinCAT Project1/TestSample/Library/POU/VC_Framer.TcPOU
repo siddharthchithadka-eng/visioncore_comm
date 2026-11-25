@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.21">
+  <POU Name="VC_Framer" Id="{dd05d1e5-5323-4bfd-853c-1012b2ed1a55}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK VC_Framer
+// Assembles complete messages from the linear RxBuffer and validates the header.
+VAR_IN_OUT
+    Link             : ST_VC_LinkData;
+END_VAR
+VAR_OUTPUT
+    MessageAvailable : BOOL;     // complete message at RxBuffer[0], or ProtocolError
+    ProtocolError    : BOOL;     // wrong Magic / version / type / length
+    Header           : ST_VC_Header;
+    MessageLen       : UDINT;    // 20 + PayloadLength
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[MessageAvailable := FALSE;
+ProtocolError    := FALSE;
+MessageLen       := 0;
+
+IF Link.RxFill < VC_HEADER_LEN THEN
+    RETURN;
+END_IF
+
+Header := VC_DecodeHeader(Buf := Link.RxBuffer);
+
+IF (Header.Magic <> VC_MAGIC)
+    OR (Header.ProtocolVersion <> VC_PROTOCOL_VERSION)
+    OR (Header.MessageType < 1) OR (Header.MessageType > 6)
+    OR (Header.PayloadLength > VC_MAX_PAYLOAD)
+THEN
+    ProtocolError    := TRUE;
+    MessageAvailable := TRUE;
+    RETURN;
+END_IF
+
+MessageLen       := VC_HEADER_LEN + Header.PayloadLength;
+MessageAvailable := (Link.RxFill >= MessageLen);]]></ST>
+    </Implementation>
+    <Method Name="Consume" Id="{b90ad153-e4a7-4f9c-9b11-e6402ae7d14e}">
+      <Declaration><![CDATA[METHOD PUBLIC Consume : BOOL
+// Removes the current message from RxBuffer and shifts the remaining bytes to index 0.
+VAR_IN_OUT
+    stLink : ST_VC_LinkData;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Consume := FALSE;
+IF (MessageLen = 0) OR (MessageLen > stLink.RxFill) THEN
+    RETURN;
+END_IF
+IF stLink.RxFill > MessageLen THEN
+    MEMMOVE(destAddr := ADR(stLink.RxBuffer[0]),
+            srcAddr  := ADR(stLink.RxBuffer[MessageLen]),
+            n        := stLink.RxFill - MessageLen);
+END_IF
+stLink.RxFill    := stLink.RxFill - MessageLen;
+MessageLen       := 0;
+MessageAvailable := FALSE;
+Consume := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

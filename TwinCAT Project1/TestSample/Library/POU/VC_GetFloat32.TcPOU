@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_GetFloat32" Id="{a90b250e-b7eb-4bb9-bb4a-aa0a59e8d9c7}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_GetFloat32 : REAL
+// Reads Float32 (4 byte, little-endian) from Buf[Pos] and advances Pos.
+VAR_IN_OUT
+    Buf   : ARRAY[*] OF BYTE;
+    Pos   : UDINT;
+END_VAR
+VAR
+    nVal : REAL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[nVal := 0;
+VC_GetRaw(Buf := Buf, Pos := Pos, pDst := ADR(nVal), Size := 4);
+VC_GetFloat32 := nVal;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

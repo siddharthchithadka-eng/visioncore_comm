@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <FileVersion>1.0.0.0</FileVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{9c21c84d-d01e-41fc-96c1-8457763109ba}</ProjectGuid>
+    <SubObjectsSortedByName>True</SubObjectsSortedByName>
+    <DownloadApplicationInfo>true</DownloadApplicationInfo>
+    <WriteProductVersion>true</WriteProductVersion>
+    <GenerateTpy>false</GenerateTpy>
+    <Name>TestSample</Name>
+    <ProgramVersion>3.1.4026.28</ProgramVersion>
+    <Application>{983003a5-247b-4ce3-bcf4-28c034a46be9}</Application>
+    <TypeSystem>{743a56c3-779d-401e-9cb6-f44be65a32f9}</TypeSystem>
+    <Implicit_Task_Info>{635c976f-6779-466e-863a-e32e73b126f0}</Implicit_Task_Info>
+    <Implicit_KindOfTask>{e7a84535-dbb2-4eab-bfaa-d12942a6c6be}</Implicit_KindOfTask>
+    <Implicit_Jitter_Distribution>{4bc174fc-9b80-454d-ad2b-f2d971b3d611}</Implicit_Jitter_Distribution>
+    <LibraryReferences>{d93b5ee5-a7fe-44cc-8ec0-f56e8b38c521}</LibraryReferences>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Diagram\Class Diagram.TcCD">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Generated\DUT_Generated\ST_VC_InspectionResult.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Generated\DUT_Generated\ST_VC_MoveToPositionArgs.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Generated\DUT_Generated\ST_VC_MoveToPositionResult.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Generated\DUT_Generated\ST_VC_ReportModuleStateArgs.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Generated\GVLs_Generated\GVL_VC_Methods.TcGVL">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Generated\POU_Generated\VC_Call_StartInspection.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Generated\POU_Generated\VC_Handle_MoveToPosition.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Generated\POU_Generated\VC_Handle_ReportModuleState.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\DUT\E_VC_LinkState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\DUT\E_VC_MsgType.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\DUT\E_VC_SlotState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\DUT\ST_VC_CtrlMsg.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\DUT\ST_VC_Diag.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\DUT\ST_VC_Header.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\DUT\ST_VC_InSlot.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\DUT\ST_VC_LinkData.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\DUT\ST_VC_MethodInfo.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\DUT\ST_VC_OutSlot.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\GVL\GVL_VC_Param.TcGVL">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_CancelOutSlot.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_CompleteInSlot.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_DecodeHeader.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_EncodeHeader.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_Framer.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_GetBool.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_GetFloat32.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_GetFloat32Array.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_GetFloat64.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_GetInt16.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_GetInt32.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_GetInt64.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_GetInt8.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_GetRaw.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_GetString.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_GetUInt16.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_GetUInt32.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_GetUInt64.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_GetUInt8.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_IsCallable.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_Link.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_MethodIndex.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_PutBool.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_PutFloat32.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_PutFloat32Array.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_PutFloat64.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_PutInt16.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_PutInt32.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_PutInt64.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_PutInt8.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_PutRaw.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_PutString.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_PutUInt16.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_PutUInt32.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_PutUInt64.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_PutUInt8.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_ReleaseOutSlot.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_ReserveOutSlot.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_SubmitOutSlot.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_TakeInSlot.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Library\POU\VC_Transport.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="PlcTask.TcTTO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\MAIN.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Test\GVL\GVL_VC.TcGVL">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Test\POU\FB_VC_LinkTest.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Test\POU\MAIN_1.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Generated" />
+    <Folder Include="Generated\DUT_Generated" />
+    <Folder Include="Generated\GVLs_Generated" />
+    <Folder Include="Generated\POU_Generated" />
+    <Folder Include="Diagram" />
+    <Folder Include="Library" />
+    <Folder Include="Library\DUT" />
+    <Folder Include="Library\GVL" />
+    <Folder Include="Library\POU" />
+    <Folder Include="Test" />
+    <Folder Include="Test\GVL" />
+    <Folder Include="Test\POU" />
+    <Folder Include="VISUs" />
+    <Folder Include="POUs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PlaceholderReference Include="Tc2_Standard">
+      <DefaultResolution>Tc2_Standard, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_Standard</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_System">
+      <DefaultResolution>Tc2_System, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_System</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_TcpIp">
+      <DefaultResolution>Tc2_TcpIp, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_TcpIp</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc3_Module">
+      <DefaultResolution>Tc3_Module, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc3_Module</Namespace>
+    </PlaceholderReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="TestSample.tmc">
+      <SubType>Content</SubType>
+    </None>
+  </ItemGroup>
+  <ProjectExtensions>
+    <PlcProjectOptions>
+      <XmlArchive>
+  <Data>
+    <o xml:space="preserve" t="OptionKey">
+      <v n="Name">"&lt;ProjectRoot&gt;"</v>
+      <d n="SubKeys" t="Hashtable" ckt="String" cvt="OptionKey">
+        <v>{192FAD59-8248-4824-A8DE-9177C94C195A}</v>
+        <o>
+          <v n="Name">"{192FAD59-8248-4824-A8DE-9177C94C195A}"</v>
+          <d n="SubKeys" t="Hashtable" />
+          <d n="Values" t="Hashtable" />
+        </o>
+        <v>{29BD8D0C-3586-4548-BB48-497B9A01693F}</v>
+        <o>
+          <v n="Name">"{29BD8D0C-3586-4548-BB48-497B9A01693F}"</v>
+          <d n="SubKeys" t="Hashtable" ckt="String" cvt="OptionKey">
+            <v>NamingConventions</v>
+            <o>
+              <v n="Name">"NamingConventions"</v>
+              <d n="SubKeys" t="Hashtable" />
+              <d n="Values" t="Hashtable" />
+            </o>
+            <v>Rules</v>
+            <o>
+              <v n="Name">"Rules"</v>
+              <d n="SubKeys" t="Hashtable" />
+              <d n="Values" t="Hashtable" />
+            </o>
+          </d>
+          <d n="Values" t="Hashtable" />
+        </o>
+        <v>{40450F57-0AA3-4216-96F3-5444ECB29763}</v>
+        <o>
+          <v n="Name">"{40450F57-0AA3-4216-96F3-5444ECB29763}"</v>
+          <d n="SubKeys" t="Hashtable" />
+          <d n="Values" t="Hashtable" ckt="String" cvt="String">
+            <v>ActiveVisuProfile</v>
+            <v>IR0whWr8bwfwBwAAiD2qpQAAAABVAgAA37x72QAAAAABAAAAAAAAAAEaUwB5AHMAdABlAG0ALgBTAHQAcgBpAG4AZwACTHsAZgA5ADUAYgBiADQAMgA2AC0ANQA1ADIANAAtADQAYgA0ADUALQA5ADQAMAAwAC0AZgBiADAAZgAyAGUANwA3AGUANQAxAGIAfQADCE4AYQBtAGUABDBUAHcAaQBuAEMAQQBUACAAMwAuADEAIABCAHUAaQBsAGQAIAA0ADAAMgA0AC4ANwAFFlAAcgBvAGYAaQBsAGUARABhAHQAYQAGTHsAMQA2AGUANQA1AGIANgAwAC0ANwAwADQAMwAtADQAYQA2ADMALQBiADYANQBiAC0ANgAxADQANwAxADMAOAA3ADgAZAA0ADIAfQAHEkwAaQBiAHIAYQByAGkAZQBzAAhMewAzAGIAZgBkADUANAA1ADkALQBiADAANwBmAC0ANABkADYAZQAtAGEAZQAxAGEALQBhADgAMwAzADUANgBhADUANQAxADQAMgB9AAlMewA5AGMAOQA1ADgAOQA2ADgALQAyAGMAOAA1AC0ANAAxAGIAYgAtADgAOAA3ADEALQA4ADkANQBmAGYAMQBmAGUAZABlADEAYQB9AAoOVgBlAHIAcwBpAG8AbgALBmkAbgB0AAwKVQBzAGEAZwBlAA0KVABpAHQAbABlAA4aVgBpAHMAdQBFAGwAZQBtAE0AZQB0AGUAcgAPDkMAbwBtAHAAYQBuAHkAEAxTAHkAcwB0AGUAbQARElYAaQBzAHUARQBsAGUAbQBzABIwVgBpAHMAdQBFAGwAZQBtAHMAUwBwAGUAYwBpAGEAbABDAG8AbgB0AHIAbwBsAHMAEyhWAGkAcwB1AEUAbABlAG0AcwBXAGkAbgBDAG8AbgB0AHIAbwBsAHMAFCRWAGkAcwB1AEUAbABlAG0AVABlAHgAdABFAGQAaQB0AG8AcgAVIlYAaQBzAHUATgBhAHQAaQB2AGUAQwBvAG4AdAByAG8AbAAWFHYAaQBzAHUAaQBuAHAAdQB0AHMAFwxzAHkAcwB0AGUAbQAYGFYAaQBzAHUARQBsAGUAbQBCAGEAcwBlABkmRABlAHYAUABsAGEAYwBlAGgAbwBsAGQAZQByAHMAVQBzAGUAZAAaCGIAbwBvAGwAGyJQAGwAdQBnAGkAbgBDAG8AbgBzAHQAcgBhAGkAbgB0AHMAHEx7ADQAMwBkADUAMgBiAGMAZQAtADkANAAyAGMALQA0ADQAZAA3AC0AOQBlADkANAAtADEAYgBmAGQAZgAzADEAMABlADYAMwBjAH0AHRxBAHQATABlAGEAcwB0AFYAZQByAHMAaQBvAG4AHhRQAGwAdQBnAGkAbgBHAHUAaQBkAB8WUwB5AHMAdABlAG0ALgBHAHUAaQBkACBIYQBmAGMAZAA1ADQANAA2AC0ANAA5ADEANAAtADQAZgBlADcALQBiAGIANwA4AC0AOQBiAGYAZgBlAGIANwAwAGYAZAAxADcAIRRVAHAAZABhAHQAZQBJAG4AZgBvACJMewBiADAAMwAzADYANgBhADgALQBiADUAYwAwAC0ANABiADkAYQAtAGEAMAAwAGUALQBlAGIAOAA2ADAAMQAxADEAMAA0AGMAMwB9ACMOVQBwAGQAYQB0AGUAcwAkTHsAMQA4ADYAOABmAGYAYwA5AC0AZQA0AGYAYwAtADQANQAzADIALQBhAGMAMAA2AC0AMQBlADMAOQBiAGIANQA1ADcAYgA2ADkAfQAlTHsAYQA1AGIAZAA0ADgAYwAzAC0AMABkADEANwAtADQAMQBiADUALQBiADEANgA0AC0ANQBmAGMANgBhAGQAMgBiADkANgBiADcAfQAmFk8AYgBqAGUAYwB0AHMAVAB5AHAAZQAnVFUAcABkAGEAdABlAEwAYQBuAGcAdQBhAGcAZQBNAG8AZABlAGwARgBvAHIAQwBvAG4AdgBlAHIAdABpAGIAbABlAEwAaQBiAHIAYQByAGkAZQBzACgQTABpAGIAVABpAHQAbABlACkUTABpAGIAQwBvAG0AcABhAG4AeQAqHlUAcABkAGEAdABlAFAAcgBvAHYAaQBkAGUAcgBzACs4UwB5AHMAdABlAG0ALgBDAG8AbABsAGUAYwB0AGkAbwBuAHMALgBIAGEAcwBoAHQAYQBiAGwAZQAsEnYAaQBzAHUAZQBsAGUAbQBzAC1INgBjAGIAMQBjAGQAZQAxAC0AZAA1AGQAYwAtADQAYQAzAGIALQA5ADAANQA0AC0AMgAxAGYAYQA3ADUANgBhADMAZgBhADQALihJAG4AdABlAHIAZgBhAGMAZQBWAGUAcgBzAGkAbwBuAEkAbgBmAG8AL0x7AGMANgAxADEAZQA0ADAAMAAtADcAZgBiADkALQA0AGMAMwA1AC0AYgA5AGEAYwAtADQAZQAzADEANABiADUAOQA5ADYANAAzAH0AMBhNAGEAagBvAHIAVgBlAHIAcwBpAG8AbgAxGE0AaQBuAG8AcgBWAGUAcgBzAGkAbwBuADIMTABlAGcAYQBjAHkAMzBMAGEAbgBnAHUAYQBnAGUATQBvAGQAZQBsAFYAZQByAHMAaQBvAG4ASQBuAGYAbwA0MEwAbwBhAGQATABpAGIAcgBhAHIAaQBlAHMASQBuAHQAbwBQAHIAbwBqAGUAYwB0ADUaQwBvAG0AcABhAHQAaQBiAGkAbABpAHQAeQDQAAIaA9ADAS0E0AUGGgfQBwgaAUUHCQjQAAkaBEUKCwQDAAAABQAAAA0AAAAAAAAA0AwLrQIAAADQDQEtDtAPAS0Q0AAJGgRFCgsEAwAAAAUAAAANAAAAKAAAANAMC60BAAAA0A0BLRHQDwEtENAACRoERQoLBAMAAAAFAAAADQAAAAAAAADQDAutAgAAANANAS0S0A8BLRDQAAkaBEUKCwQDAAAABQAAAA0AAAAUAAAA0AwLrQIAAADQDQEtE9APAS0Q0AAJGgRFCgsEAwAAAAUAAAANAAAAAAAAANAMC60CAAAA0A0BLRTQDwEtENAACRoERQoLBAMAAAAFAAAADQAAAAAAAADQDAutAgAAANANAS0V0A8BLRDQAAkaBEUKCwQDAAAABQAAAA0AAAAAAAAA0AwLrQIAAADQDQEtFtAPAS0X0AAJGgRFCgsEAwAAAAUAAAANAAAAKAAAANAMC60EAAAA0A0BLRjQDwEtENAZGq0BRRscAdAAHBoCRR0LBAMAAAAFAAAADQAAAAAAAADQHh8tINAhIhoCRSMkAtAAJRoFRQoLBAMAAAADAAAAAAAAAAoAAADQJgutAAAAANADAS0n0CgBLRHQKQEtENAAJRoFRQoLBAMAAAADAAAAAAAAAAoAAADQJgutAQAAANADAS0n0CgBLRHQKQEtEJoqKwFFAAEC0AABLSzQAAEtF9AAHy0t0C4vGgPQMAutAQAAANAxC60XAAAA0DIarQDQMy8aA9AwC60CAAAA0DELrQMAAADQMhqtANA0Gq0A0DUarQA=</v>
+          </d>
+        </o>
+        <v>{8A0FB252-96EB-4DCC-A5B4-B4804D05E2D6}</v>
+        <o>
+          <v n="Name">"{8A0FB252-96EB-4DCC-A5B4-B4804D05E2D6}"</v>
+          <d n="SubKeys" t="Hashtable" />
+          <d n="Values" t="Hashtable" ckt="String" cvt="Boolean">
+            <v>WriteLineIDs</v>
+            <v>True</v>
+          </d>
+        </o>
+        <v>{8F99A816-E488-41E4-9FA3-846536012284}</v>
+        <o>
+          <v n="Name">"{8F99A816-E488-41E4-9FA3-846536012284}"</v>
+          <d n="SubKeys" t="Hashtable" />
+          <d n="Values" t="Hashtable" ckt="String" cvt="String">
+            <v>DisabledWarningIds</v>
+            <v>5410</v>
+          </d>
+        </o>
+        <v>{eeeeeeee-3909-4298-8022-501ac3238667}</v>
+        <o>
+          <v n="Name">"{eeeeeeee-3909-4298-8022-501ac3238667}"</v>
+          <d n="SubKeys" t="Hashtable" />
+          <d n="Values" t="Hashtable" />
+        </o>
+      </d>
+      <d n="Values" t="Hashtable" />
+    </o>
+  </Data>
+  <TypeList>
+    <Type n="Boolean">System.Boolean</Type>
+    <Type n="Hashtable">System.Collections.Hashtable</Type>
+    <Type n="OptionKey">{54dd0eac-a6d8-46f2-8c27-2f43c7e49861}</Type>
+    <Type n="String">System.String</Type>
+  </TypeList>
+</XmlArchive>
+    </PlcProjectOptions>
+  </ProjectExtensions>
+</Project>

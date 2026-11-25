@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_VC_InSlot" Id="{4457120d-042e-4862-b188-ba53f0b80239}">
+    <Declaration><![CDATA[TYPE ST_VC_InSlot :               // App calls PLC
+STRUCT
+    State           : E_VC_SlotState;
+    MethodIndex     : UINT;
+    CallId          : UDINT;
+    ReceivedMs      : UDINT;
+    CancelRequested : BOOL;
+    Status          : UINT;
+    PayloadLen      : UDINT;
+    Payload         : ARRAY[0..VC_MAX_PAYLOAD - 1] OF BYTE;  // arguments first, then result
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_PutFloat32" Id="{0baf6657-66d0-4c00-8aaf-cd9f953381a2}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_PutFloat32 : BOOL
+// Writes Float32 (4 byte, little-endian) at Buf[Pos] and advances Pos.
+VAR_IN_OUT
+    Buf   : ARRAY[*] OF BYTE;
+    Pos   : UDINT;
+END_VAR
+VAR_INPUT
+    Value : REAL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[VC_PutFloat32 := VC_PutRaw(Buf := Buf, Pos := Pos, pSrc := ADR(Value), Size := 4);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

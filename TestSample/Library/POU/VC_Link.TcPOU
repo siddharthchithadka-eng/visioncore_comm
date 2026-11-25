@@ -1,0 +1,673 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.21">
+  <POU Name="VC_Link" Id="{bf67056c-6d7d-4bb5-9d1f-d6dccc2624df}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK VC_Link
+// Central block: one instance per VisionCore connection, called every cycle,
+// BEFORE all VC_Call_* / VC_Handle_* blocks that use the same ST_VC_LinkData (same task).
+VAR_INPUT
+    Enable        : BOOL;
+    Mode          : INT;           // 0 = connect actively, 1 = wait for connection
+    RemoteAddress : STRING(15);    // Mode = 0
+    RemotePort    : UINT := 5100;  // Mode = 0
+    LocalPort     : UINT := 5100;  // Mode = 1
+    ClientId      : STRING(31);
+END_VAR
+VAR_IN_OUT
+    Link          : ST_VC_LinkData;
+END_VAR
+VAR_OUTPUT
+    Connected     : BOOL;          // TCP connection up
+    Online        : BOOL;          // HelloAck received
+    Restricted    : BOOL;          // at least one method not released
+    Error         : BOOL;          // stays set until ONLINE again
+    ErrorId       : UINT;          // VC_ERR_*
+    State         : E_VC_LinkState;
+END_VAR
+VAR
+    fbTransport   : VC_Transport;
+    fbFramer      : VC_Framer;
+    bSendReq      : BOOL;          // frame in TxFrame, waiting for transport to take it
+    nTxLen        : UDINT;
+    bHelloSent    : BOOL;
+    nIdx          : UINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// ---- 1. Time base ----
+Link.NowMs := TIME_TO_UDINT(TIME());
+
+// ---- 2./3. Transport: connect, accept, close, send, receive ----
+fbTransport(
+    Open          := (Link.State = VC_LS_CONNECTING) OR (Link.State = VC_LS_LISTENING)
+                     OR (Link.State = VC_LS_HELLO) OR (Link.State = VC_LS_ONLINE),
+    Mode          := Mode,
+    RemoteAddress := RemoteAddress,
+    RemotePort    := RemotePort,
+    LocalPort     := LocalPort,
+    SendRequest   := bSendReq,
+    SendLen       := nTxLen,
+    Link          := Link);
+IF fbTransport.SendBusy THEN
+    bSendReq := FALSE;                 // transport has taken the frame
+END_IF
+IF fbTransport.Error THEN
+    Link.Diag.LastTransportStatus := fbTransport.Status;
+END_IF
+
+// ---- Connection state machine ----
+CASE Link.State OF
+VC_LS_DISABLED:
+    IF Enable THEN
+        IF Mode = 0 THEN
+            THIS^.GotoState(stLink := Link, NewState := VC_LS_CONNECTING);
+        ELSE
+            THIS^.GotoState(stLink := Link, NewState := VC_LS_LISTENING);
+        END_IF
+    END_IF
+
+VC_LS_CONNECTING, VC_LS_LISTENING:
+    IF NOT Enable THEN
+        THIS^.GotoState(stLink := Link, NewState := VC_LS_CLOSING);
+    ELSIF fbTransport.Error THEN
+        THIS^.SetError(stLink := Link, Id := VC_ERR_CONNECT);
+        THIS^.GotoState(stLink := Link, NewState := VC_LS_CLOSING);   // releases handles, then WAIT_RETRY
+    ELSIF fbTransport.Connected THEN
+        THIS^.GotoState(stLink := Link, NewState := VC_LS_HELLO);
+    END_IF
+
+VC_LS_HELLO, VC_LS_ONLINE:
+    IF NOT Enable THEN
+        THIS^.GotoState(stLink := Link, NewState := VC_LS_CLOSING);
+    ELSIF fbTransport.Error THEN
+        THIS^.SetError(stLink := Link, Id := fbTransport.ErrorId);
+        THIS^.GotoState(stLink := Link, NewState := VC_LS_CLOSING);
+    ELSIF NOT fbTransport.Connected THEN
+        THIS^.SetError(stLink := Link, Id := VC_ERR_RECEIVE);
+        THIS^.GotoState(stLink := Link, NewState := VC_LS_CLOSING);
+    END_IF
+
+VC_LS_CLOSING:
+    IF fbTransport.Idle THEN
+        IF Enable THEN
+            THIS^.GotoState(stLink := Link, NewState := VC_LS_WAIT_RETRY);
+        ELSE
+            THIS^.GotoState(stLink := Link, NewState := VC_LS_DISABLED);
+        END_IF
+    END_IF
+
+VC_LS_WAIT_RETRY:
+    IF NOT Enable THEN
+        THIS^.GotoState(stLink := Link, NewState := VC_LS_DISABLED);
+    ELSIF (Link.NowMs - Link.StateSinceMs) >= VC_RETRY_MS THEN
+        IF Mode = 0 THEN
+            THIS^.GotoState(stLink := Link, NewState := VC_LS_CONNECTING);
+        ELSE
+            THIS^.GotoState(stLink := Link, NewState := VC_LS_LISTENING);
+        END_IF
+    END_IF
+END_CASE
+
+// ---- 4. Process messages ----
+IF (Link.State = VC_LS_HELLO) OR (Link.State = VC_LS_ONLINE) THEN
+    THIS^.ProcessMessages(stLink := Link);
+END_IF
+
+// ---- 5. Deadlines ----
+IF (Link.State = VC_LS_HELLO) OR (Link.State = VC_LS_ONLINE) THEN
+    THIS^.CheckDeadlines(stLink := Link);
+END_IF
+
+// ---- 6. Schedule at most one message ----
+IF (Link.State = VC_LS_HELLO) OR (Link.State = VC_LS_ONLINE) THEN
+    THIS^.ScheduleSend(stLink := Link);
+END_IF
+
+// ---- 7. Outputs ----
+Connected  := fbTransport.Connected;
+Online     := Link.Online;
+State      := Link.State;
+Restricted := FALSE;
+IF Link.Online THEN
+    nIdx := 0;
+    WHILE (nIdx < VC_METHOD_COUNT) AND (nIdx < VC_MAX_METHODS) DO
+        IF Link.MethodState[nIdx] <> 1 THEN
+            Restricted := TRUE;
+        END_IF
+        nIdx := nIdx + 1;
+    END_WHILE
+END_IF]]></ST>
+    </Implementation>
+    <Method Name="BuildHello" Id="{85165deb-142e-4c9b-895e-1e1af3d9d58f}">
+      <Declaration><![CDATA[METHOD PRIVATE BuildHello : UDINT
+// Bausteindesign 7.3: 32 + 4 x 48 + 2 + 64 x 6 = 610 bytes payload
+VAR_IN_OUT
+    stLink : ST_VC_LinkData;
+END_VAR
+VAR
+    nPos : UDINT;
+    k    : UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[nPos := VC_HEADER_LEN;
+VC_PutString(Buf := stLink.TxFrame, Pos := nPos, Value := ClientId, Len := 32);
+FOR k := 0 TO 3 DO
+    VC_PutString(Buf := stLink.TxFrame, Pos := nPos, Value := VC_INTERFACES[k], Len := 48);
+END_FOR
+VC_PutUInt16(Buf := stLink.TxFrame, Pos := nPos, Value := VC_METHOD_COUNT);
+FOR k := 0 TO VC_MAX_METHODS - 1 DO
+    VC_PutUInt16(Buf := stLink.TxFrame, Pos := nPos, Value := VC_METHODS[k].MethodId);
+    VC_PutUInt32(Buf := stLink.TxFrame, Pos := nPos, Value := VC_METHODS[k].Hash);
+END_FOR
+BuildHello := nPos - VC_HEADER_LEN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="CheckDeadlines" Id="{ca591eec-2191-4e8e-b8dc-165aac13126e}">
+      <Declaration><![CDATA[METHOD PRIVATE CheckDeadlines
+VAR_IN_OUT
+    stLink : ST_VC_LinkData;
+END_VAR
+VAR
+    k    : UINT;
+    nIdx : UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Hello timeout / watchdog
+IF stLink.State = VC_LS_HELLO THEN
+    IF (stLink.NowMs - stLink.StateSinceMs) > VC_HELLO_TIMEOUT_MS THEN
+        THIS^.SetError(stLink := stLink, Id := VC_ERR_HELLO_TIMEOUT);
+        THIS^.GotoState(stLink := stLink, NewState := VC_LS_CLOSING);
+        RETURN;
+    END_IF
+ELSIF stLink.State = VC_LS_ONLINE THEN
+    IF (stLink.NowMs - stLink.LastRxMs) > VC_WATCHDOG_MS THEN
+        THIS^.SetError(stLink := stLink, Id := VC_ERR_WATCHDOG);
+        THIS^.GotoState(stLink := stLink, NewState := VC_LS_CLOSING);
+        RETURN;
+    END_IF
+END_IF
+
+FOR k := 0 TO VC_MAX_CALLS - 1 DO
+    // Out slots: call timeout and orphaned slots
+    CASE stLink.OutSlots[k].State OF
+    VC_SS_SENT:
+        IF (stLink.NowMs - stLink.OutSlots[k].StartMs) > stLink.OutSlots[k].TimeoutMs THEN
+            stLink.OutSlots[k].Status := VC_STATUS_TIMEOUT;
+            stLink.OutSlots[k].State  := VC_SS_CANCEL_PENDING;
+            stLink.Diag.CallTimeouts  := stLink.Diag.CallTimeouts + 1;
+        END_IF
+    VC_SS_RESERVED, VC_SS_DONE:
+        IF (stLink.NowMs - stLink.OutSlots[k].OwnerSeenMs) > VC_OWNER_TIMEOUT_MS THEN
+            stLink.OutSlots[k].State      := VC_SS_FREE;
+            stLink.OutSlots[k].Status     := VC_STATUS_OK;
+            stLink.OutSlots[k].PayloadLen := 0;
+        END_IF
+    END_CASE
+
+    // In slots: released without answer after 2 x method timeout
+    CASE stLink.InSlots[k].State OF
+    VC_SS_REQUEST, VC_SS_IN_PROGRESS:
+        nIdx := stLink.InSlots[k].MethodIndex;
+        IF (stLink.NowMs - stLink.InSlots[k].ReceivedMs) > (2 * VC_METHODS[nIdx].TimeoutMs) THEN
+            stLink.InSlots[k].State           := VC_SS_FREE;
+            stLink.InSlots[k].CancelRequested := FALSE;
+        END_IF
+    END_CASE
+END_FOR]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="EnqueueCtrl" Id="{c15de13e-a832-4622-983e-d0b6221e6c2a}">
+      <Declaration><![CDATA[METHOD PRIVATE EnqueueCtrl : BOOL
+VAR_IN_OUT
+    stLink   : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    MsgType  : E_VC_MsgType;
+    MethodId : UINT;
+    CallId   : UDINT;
+    Status   : UINT;
+END_VAR
+VAR
+    nTail : UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF stLink.CtrlCount >= VC_CTRL_QUEUE THEN
+    EnqueueCtrl := FALSE;                                  // queue full: VisionCore runs into its timeout
+    RETURN;
+END_IF
+nTail := (stLink.CtrlHead + stLink.CtrlCount) MOD VC_CTRL_QUEUE;
+stLink.CtrlQueue[nTail].MessageType := MsgType;
+stLink.CtrlQueue[nTail].MethodId    := MethodId;
+stLink.CtrlQueue[nTail].CallId      := CallId;
+stLink.CtrlQueue[nTail].Status      := Status;
+stLink.CtrlCount := stLink.CtrlCount + 1;
+EnqueueCtrl := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GotoState" Id="{83779c1b-05fc-4dd3-8b29-3812720150a0}">
+      <Declaration><![CDATA[METHOD PRIVATE GotoState
+VAR_IN_OUT
+    stLink   : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    NewState : E_VC_LinkState;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[stLink.State        := NewState;
+stLink.StateSinceMs := stLink.NowMs;
+
+CASE NewState OF
+VC_LS_HELLO:
+    stLink.RxFill := 0;
+    bHelloSent    := FALSE;
+VC_LS_ONLINE:
+    stLink.Online   := TRUE;
+    stLink.LastRxMs := stLink.NowMs;
+    Error           := FALSE;
+    ErrorId         := 0;
+VC_LS_CLOSING:
+    THIS^.HandleConnectionLoss(stLink := stLink);
+VC_LS_WAIT_RETRY:
+    stLink.Diag.Reconnects := stLink.Diag.Reconnects + 1;
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="HandleCancel" Id="{65fd2008-727a-4744-9773-c4930887af11}">
+      <Declaration><![CDATA[METHOD PRIVATE HandleCancel
+// Cancel from VisionCore. Not yet taken by a handler -> answer Cancelled directly.
+VAR_IN_OUT
+    stLink : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    Hdr    : ST_VC_Header;
+END_VAR
+VAR
+    k : UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FOR k := 0 TO VC_MAX_CALLS - 1 DO
+    IF stLink.InSlots[k].CallId = Hdr.CallId THEN
+        CASE stLink.InSlots[k].State OF
+        VC_SS_REQUEST:
+            stLink.InSlots[k].Status     := VC_STATUS_CANCELLED;
+            stLink.InSlots[k].PayloadLen := 0;
+            stLink.InSlots[k].State      := VC_SS_RESPONSE_READY;
+            RETURN;
+        VC_SS_IN_PROGRESS:
+            stLink.InSlots[k].CancelRequested := TRUE;   // handler answers Cancelled or regular
+            RETURN;
+        END_CASE
+    END_IF
+END_FOR]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="HandleConnectionLoss" Id="{0af02a2b-c294-49cf-a08f-d76b5e2e580b}">
+      <Declaration><![CDATA[METHOD PRIVATE HandleConnectionLoss
+// Bausteindesign section 5: "Verbindungsabbruch behandeln" (handle connection loss)
+VAR_IN_OUT
+    stLink : ST_VC_LinkData;
+END_VAR
+VAR
+    k : UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[stLink.Online := FALSE;
+FOR k := 0 TO VC_MAX_METHODS - 1 DO
+    stLink.MethodState[k] := 0;
+END_FOR
+FOR k := 0 TO VC_MAX_CALLS - 1 DO
+    CASE stLink.OutSlots[k].State OF
+    VC_SS_TX_PENDING, VC_SS_SENT, VC_SS_CANCEL_PENDING:
+        stLink.OutSlots[k].Status     := VC_STATUS_CONNECTION_LOST;
+        stLink.OutSlots[k].PayloadLen := 0;
+        stLink.OutSlots[k].State      := VC_SS_DONE;
+    END_CASE
+    stLink.InSlots[k].State           := VC_SS_FREE;   // VisionCore reports the loss itself
+    stLink.InSlots[k].CancelRequested := FALSE;
+END_FOR
+stLink.CtrlHead  := 0;
+stLink.CtrlCount := 0;
+stLink.RxFill    := 0;
+bSendReq         := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="HandleHelloAck" Id="{749c0c1e-446e-43cb-82eb-435a15ca87a3}">
+      <Declaration><![CDATA[METHOD PRIVATE HandleHelloAck
+VAR_IN_OUT
+    stLink : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    Hdr    : ST_VC_Header;
+END_VAR
+VAR
+    k : UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Only valid in HELLO and with exactly 65 bytes payload
+IF (stLink.State <> VC_LS_HELLO) OR (Hdr.PayloadLength <> VC_HELLO_ACK_LEN) THEN
+    THIS^.SetError(stLink := stLink, Id := VC_ERR_PROTOCOL);
+    THIS^.GotoState(stLink := stLink, NewState := VC_LS_CLOSING);
+    RETURN;
+END_IF
+
+IF stLink.RxBuffer[VC_HEADER_LEN] = 0 THEN                 // Accepted = FALSE
+    THIS^.SetError(stLink := stLink, Id := VC_ERR_HELLO_REJECTED);
+    THIS^.GotoState(stLink := stLink, NewState := VC_LS_CLOSING);
+    RETURN;
+END_IF
+
+FOR k := 0 TO VC_MAX_METHODS - 1 DO
+    stLink.MethodState[k] := BYTE_TO_USINT(stLink.RxBuffer[VC_HEADER_LEN + 1 + k]);
+END_FOR
+THIS^.GotoState(stLink := stLink, NewState := VC_LS_ONLINE);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="HandleRequest" Id="{23152b9c-fcec-42c1-a14f-cdffd2c23866}">
+      <Declaration><![CDATA[METHOD PRIVATE HandleRequest
+// Request from VisionCore: checks from Bausteindesign 6.2, then occupy an in slot.
+VAR_IN_OUT
+    stLink : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    Hdr    : ST_VC_Header;
+END_VAR
+VAR
+    k       : UINT;
+    nIdx    : INT;
+    nSlot   : INT;
+    nStatus : UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[nSlot   := -1;
+nStatus := VC_STATUS_OK;
+nIdx    := VC_MethodIndex(MethodId := Hdr.MethodId, Provider := VC_PROVIDER_PLC);
+
+IF nIdx < 0 THEN
+    nStatus := VC_STATUS_UNKNOWN_METHOD;
+ELSIF stLink.MethodState[nIdx] <> 1 THEN
+    nStatus := VC_STATUS_METHOD_INCOMPATIBLE;
+ELSIF (stLink.NowMs - stLink.HandlerSeenMs[nIdx]) >= VC_OWNER_TIMEOUT_MS THEN
+    nStatus := VC_STATUS_UNKNOWN_METHOD;                   // no active VC_Handle_* instance
+ELSIF Hdr.PayloadLength <> VC_METHODS[nIdx].ArgsLen THEN
+    nStatus := VC_STATUS_INVALID_PAYLOAD;
+ELSE
+    FOR k := 0 TO VC_MAX_CALLS - 1 DO
+        IF stLink.InSlots[k].State = VC_SS_FREE THEN
+            nSlot := UINT_TO_INT(k);
+            EXIT;
+        END_IF
+    END_FOR
+    IF nSlot < 0 THEN
+        nStatus := VC_STATUS_BUSY;
+    END_IF
+END_IF
+
+IF nStatus <> VC_STATUS_OK THEN
+    THIS^.EnqueueCtrl(stLink := stLink, MsgType := VC_MT_RESPONSE,
+                      MethodId := Hdr.MethodId, CallId := Hdr.CallId, Status := nStatus);
+    stLink.Diag.RejectedCalls := stLink.Diag.RejectedCalls + 1;
+    RETURN;
+END_IF
+
+stLink.InSlots[nSlot].MethodIndex     := INT_TO_UINT(nIdx);
+stLink.InSlots[nSlot].CallId          := Hdr.CallId;
+stLink.InSlots[nSlot].ReceivedMs      := stLink.NowMs;
+stLink.InSlots[nSlot].CancelRequested := FALSE;
+stLink.InSlots[nSlot].Status          := VC_STATUS_OK;
+stLink.InSlots[nSlot].PayloadLen      := Hdr.PayloadLength;
+IF Hdr.PayloadLength > 0 THEN
+    MEMCPY(destAddr := ADR(stLink.InSlots[nSlot].Payload),
+           srcAddr  := ADR(stLink.RxBuffer[VC_HEADER_LEN]),
+           n        := Hdr.PayloadLength);
+END_IF
+stLink.InSlots[nSlot].State := VC_SS_REQUEST;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="HandleResponse" Id="{846fe781-9dc7-40ba-8479-ad972a929ad9}">
+      <Declaration><![CDATA[METHOD PRIVATE HandleResponse
+// Response to a PLC call: match out slot in SENT by CallId; late responses are discarded.
+VAR_IN_OUT
+    stLink : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    Hdr    : ST_VC_Header;
+END_VAR
+VAR
+    k     : UINT;
+    nSlot : INT;
+    nIdx  : UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[nSlot := -1;
+FOR k := 0 TO VC_MAX_CALLS - 1 DO
+    IF (stLink.OutSlots[k].State = VC_SS_SENT) AND (stLink.OutSlots[k].CallId = Hdr.CallId) THEN
+        nSlot := UINT_TO_INT(k);
+        EXIT;
+    END_IF
+END_FOR
+IF nSlot < 0 THEN
+    RETURN;                                                // cancelled / timed out / unknown -> drop
+END_IF
+
+nIdx := stLink.OutSlots[nSlot].MethodIndex;
+IF Hdr.Status = VC_STATUS_OK THEN
+    IF (Hdr.MethodId = VC_METHODS[nIdx].MethodId) AND (Hdr.PayloadLength = VC_METHODS[nIdx].ResultLen) THEN
+        IF Hdr.PayloadLength > 0 THEN
+            MEMCPY(destAddr := ADR(stLink.OutSlots[nSlot].Payload),
+                   srcAddr  := ADR(stLink.RxBuffer[VC_HEADER_LEN]),
+                   n        := Hdr.PayloadLength);
+        END_IF
+        stLink.OutSlots[nSlot].PayloadLen := Hdr.PayloadLength;
+        stLink.OutSlots[nSlot].Status     := VC_STATUS_OK;
+    ELSE
+        stLink.OutSlots[nSlot].PayloadLen := 0;
+        stLink.OutSlots[nSlot].Status     := VC_STATUS_INVALID_PAYLOAD;
+    END_IF
+ELSE
+    stLink.OutSlots[nSlot].PayloadLen := 0;
+    stLink.OutSlots[nSlot].Status     := Hdr.Status;
+END_IF
+stLink.OutSlots[nSlot].State := VC_SS_DONE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ProcessMessages" Id="{9c999323-d657-4ead-88d7-8a8fceccf05e}">
+      <Declaration><![CDATA[METHOD PRIVATE ProcessMessages
+// Bausteindesign 7.1: at most VC_MSG_PER_CYCLE messages per cycle
+VAR_IN_OUT
+    stLink : ST_VC_LinkData;
+END_VAR
+VAR
+    k     : UINT;
+    stHdr : ST_VC_Header;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FOR k := 1 TO VC_MSG_PER_CYCLE DO
+    fbFramer(Link := stLink);
+    IF NOT fbFramer.MessageAvailable THEN
+        EXIT;
+    END_IF
+    IF fbFramer.ProtocolError THEN
+        THIS^.SetError(stLink := stLink, Id := VC_ERR_PROTOCOL);
+        THIS^.GotoState(stLink := stLink, NewState := VC_LS_CLOSING);
+        EXIT;
+    END_IF
+
+    stHdr := fbFramer.Header;
+    stLink.LastRxMs := stLink.NowMs;                       // resets the watchdog
+    stLink.Diag.RxMessages := stLink.Diag.RxMessages + 1;
+
+    CASE stHdr.MessageType OF
+    VC_MT_HELLO_ACK:
+        THIS^.HandleHelloAck(stLink := stLink, Hdr := stHdr);
+    VC_MT_HEARTBEAT:
+        ;                                                  // watchdog already reset
+    VC_MT_RESPONSE:
+        THIS^.HandleResponse(stLink := stLink, Hdr := stHdr);
+    VC_MT_REQUEST:
+        THIS^.HandleRequest(stLink := stLink, Hdr := stHdr);
+    VC_MT_CANCEL:
+        THIS^.HandleCancel(stLink := stLink, Hdr := stHdr);
+    ELSE                                                   // Hello from App is not allowed
+        THIS^.SetError(stLink := stLink, Id := VC_ERR_PROTOCOL);
+        THIS^.GotoState(stLink := stLink, NewState := VC_LS_CLOSING);
+    END_CASE
+
+    IF stLink.State = VC_LS_CLOSING THEN
+        EXIT;                                              // buffer is cleared by HandleConnectionLoss
+    END_IF
+    fbFramer.Consume(stLink := stLink);
+END_FOR]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ScheduleSend" Id="{24dc7463-a7e5-4246-8ebb-30c913ee7bf2}">
+      <Declaration><![CDATA[METHOD PRIVATE ScheduleSend
+// Bausteindesign 7.2: build exactly one frame by priority when the transport is free.
+VAR_IN_OUT
+    stLink : ST_VC_LinkData;
+END_VAR
+VAR
+    k     : UINT;
+    nSlot : UINT;
+    nIdx  : UINT;
+    nLen  : UDINT;
+    stMsg : ST_VC_CtrlMsg;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bSendReq OR fbTransport.SendBusy OR NOT fbTransport.Connected THEN
+    RETURN;                                                // TxFrame still in use
+END_IF
+
+// 1. Hello
+IF stLink.State = VC_LS_HELLO THEN
+    IF NOT bHelloSent THEN
+        nLen := THIS^.BuildHello(stLink := stLink);
+        THIS^.StartFrame(stLink := stLink, MsgType := VC_MT_HELLO, MethodId := 0, CallId := 0,
+                         Status := VC_STATUS_OK, PayloadLen := nLen);
+        bHelloSent := TRUE;
+    END_IF
+    RETURN;
+END_IF
+IF stLink.State <> VC_LS_ONLINE THEN
+    RETURN;
+END_IF
+
+// 2. Control messages (error responses)
+IF stLink.CtrlCount > 0 THEN
+    stMsg := stLink.CtrlQueue[stLink.CtrlHead];
+    stLink.CtrlHead  := (stLink.CtrlHead + 1) MOD VC_CTRL_QUEUE;
+    stLink.CtrlCount := stLink.CtrlCount - 1;
+    THIS^.StartFrame(stLink := stLink, MsgType := stMsg.MessageType, MethodId := stMsg.MethodId,
+                     CallId := stMsg.CallId, Status := stMsg.Status, PayloadLen := 0);
+    RETURN;
+END_IF
+
+// 3. Out slots CANCEL_PENDING -> Cancel, slot DONE
+FOR k := 0 TO VC_MAX_CALLS - 1 DO
+    IF stLink.OutSlots[k].State = VC_SS_CANCEL_PENDING THEN
+        nIdx := stLink.OutSlots[k].MethodIndex;
+        THIS^.StartFrame(stLink := stLink, MsgType := VC_MT_CANCEL, MethodId := VC_METHODS[nIdx].MethodId,
+                         CallId := stLink.OutSlots[k].CallId, Status := VC_STATUS_OK, PayloadLen := 0);
+        stLink.OutSlots[k].State := VC_SS_DONE;
+        RETURN;
+    END_IF
+END_FOR
+
+// 4. In slots RESPONSE_READY -> Response, slot FREE
+FOR k := 0 TO VC_MAX_CALLS - 1 DO
+    IF stLink.InSlots[k].State = VC_SS_RESPONSE_READY THEN
+        nIdx := stLink.InSlots[k].MethodIndex;
+        nLen := 0;
+        IF stLink.InSlots[k].Status = VC_STATUS_OK THEN
+            nLen := stLink.InSlots[k].PayloadLen;
+        END_IF
+        IF nLen > 0 THEN
+            MEMCPY(destAddr := ADR(stLink.TxFrame[VC_HEADER_LEN]),
+                   srcAddr  := ADR(stLink.InSlots[k].Payload), n := nLen);
+        END_IF
+        THIS^.StartFrame(stLink := stLink, MsgType := VC_MT_RESPONSE, MethodId := VC_METHODS[nIdx].MethodId,
+                         CallId := stLink.InSlots[k].CallId, Status := stLink.InSlots[k].Status,
+                         PayloadLen := nLen);
+        stLink.InSlots[k].State           := VC_SS_FREE;
+        stLink.InSlots[k].CancelRequested := FALSE;
+        RETURN;
+    END_IF
+END_FOR
+
+// 5. Out slots TX_PENDING -> Request, round robin from NextOutSend
+FOR k := 0 TO VC_MAX_CALLS - 1 DO
+    nSlot := (stLink.NextOutSend + k) MOD VC_MAX_CALLS;
+    IF stLink.OutSlots[nSlot].State = VC_SS_TX_PENDING THEN
+        nIdx := stLink.OutSlots[nSlot].MethodIndex;
+        nLen := stLink.OutSlots[nSlot].PayloadLen;
+        IF nLen > 0 THEN
+            MEMCPY(destAddr := ADR(stLink.TxFrame[VC_HEADER_LEN]),
+                   srcAddr  := ADR(stLink.OutSlots[nSlot].Payload), n := nLen);
+        END_IF
+        THIS^.StartFrame(stLink := stLink, MsgType := VC_MT_REQUEST, MethodId := VC_METHODS[nIdx].MethodId,
+                         CallId := stLink.OutSlots[nSlot].CallId, Status := VC_STATUS_OK, PayloadLen := nLen);
+        stLink.OutSlots[nSlot].State   := VC_SS_SENT;
+        stLink.OutSlots[nSlot].StartMs := stLink.NowMs;
+        stLink.NextOutSend := (nSlot + 1) MOD VC_MAX_CALLS;
+        RETURN;
+    END_IF
+END_FOR
+
+// 6. Heartbeat
+IF (stLink.NowMs - stLink.LastTxMs) >= VC_HEARTBEAT_MS THEN
+    THIS^.StartFrame(stLink := stLink, MsgType := VC_MT_HEARTBEAT, MethodId := 0, CallId := 0,
+                     Status := VC_STATUS_OK, PayloadLen := 0);
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetError" Id="{8e7b03de-0059-4293-8f2a-ecc333876236}">
+      <Declaration><![CDATA[METHOD PRIVATE SetError
+VAR_IN_OUT
+    stLink : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    Id     : UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Error   := TRUE;
+ErrorId := Id;
+stLink.Diag.LastErrorId := Id;
+stLink.Diag.LastErrorMs := stLink.NowMs;
+IF Id = VC_ERR_PROTOCOL THEN
+    stLink.Diag.ProtocolErrors := stLink.Diag.ProtocolErrors + 1;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="StartFrame" Id="{fefc21e4-7f21-479e-843f-b2e01fa341a8}">
+      <Declaration><![CDATA[METHOD PRIVATE StartFrame
+// Writes the header to TxFrame[0..19] (payload must already be at TxFrame[20..]) and requests sending.
+VAR_IN_OUT
+    stLink     : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    MsgType    : E_VC_MsgType;
+    MethodId   : UINT;
+    CallId     : UDINT;
+    Status     : UINT;
+    PayloadLen : UDINT;
+END_VAR
+VAR
+    stHdr : ST_VC_Header;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[stHdr.Magic           := VC_MAGIC;
+stHdr.ProtocolVersion := VC_PROTOCOL_VERSION;
+stHdr.MessageType     := TO_USINT(MsgType);
+stHdr.Flags           := 0;
+stHdr.MethodId        := MethodId;
+stHdr.CallId          := CallId;
+stHdr.PayloadLength   := PayloadLen;
+stHdr.Status          := Status;
+stHdr.Reserved        := 0;
+VC_EncodeHeader(Buf := stLink.TxFrame, Hdr := stHdr);
+
+nTxLen   := VC_HEADER_LEN + PayloadLen;
+bSendReq := TRUE;
+stLink.LastTxMs := stLink.NowMs;
+stLink.Diag.TxMessages := stLink.Diag.TxMessages + 1;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

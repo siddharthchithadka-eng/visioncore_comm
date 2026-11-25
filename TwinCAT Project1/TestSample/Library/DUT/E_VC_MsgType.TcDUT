@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="E_VC_MsgType" Id="{eac2668c-0b0d-44d7-8648-e9ea6e9dab2f}">
+    <Declaration><![CDATA[TYPE E_VC_MsgType :
+// Deliberately NOT {attribute 'strict'}: values are compared with the USINT header field.
+(
+    VC_MT_HELLO     := 1,
+    VC_MT_HELLO_ACK := 2,
+    VC_MT_REQUEST   := 3,
+    VC_MT_RESPONSE  := 4,
+    VC_MT_CANCEL    := 5,
+    VC_MT_HEARTBEAT := 6
+) USINT;
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

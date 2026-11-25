@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.21">
+  <DUT Name="ST_VC_MoveToPositionArgs" Id="{2ec32f40-0362-44b6-8473-a99b2f7cbcd7}">
+    <Declaration><![CDATA[TYPE ST_VC_MoveToPositionArgs :
+STRUCT
+    Position : LREAL;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

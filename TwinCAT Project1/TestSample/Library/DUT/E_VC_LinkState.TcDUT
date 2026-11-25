@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="E_VC_LinkState" Id="{8f4da893-2423-4a1f-a958-a9f1111a4fc6}">
+    <Declaration><![CDATA[TYPE E_VC_LinkState :
+(
+    VC_LS_DISABLED   := 0,
+    VC_LS_CONNECTING := 1,   // PLC connects actively (VisionCore mode Listen)
+    VC_LS_LISTENING  := 2,   // PLC waits for connection (VisionCore mode Connect)
+    VC_LS_HELLO      := 3,   // Hello sent, waiting for HelloAck
+    VC_LS_ONLINE     := 4,
+    VC_LS_CLOSING    := 5,
+    VC_LS_WAIT_RETRY := 6
+) UINT;
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_VC_OutSlot" Id="{a7e76419-e882-4a3f-a0d1-d26c8a18d5e5}">
+    <Declaration><![CDATA[TYPE ST_VC_OutSlot :              // PLC calls App
+STRUCT
+    State        : E_VC_SlotState;
+    MethodIndex  : UINT;
+    CallId       : UDINT;
+    StartMs      : UDINT;
+    TimeoutMs    : UDINT;
+    OwnerSeenMs  : UDINT;         // last call of owning VC_Call_* block
+    Status       : UINT;
+    PayloadLen   : UDINT;
+    Payload      : ARRAY[0..VC_MAX_PAYLOAD - 1] OF BYTE;  // arguments first, then result
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

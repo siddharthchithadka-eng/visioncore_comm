@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_VC_CtrlMsg" Id="{2d3b2bf4-675d-4332-85e1-698581227cff}">
+    <Declaration><![CDATA[TYPE ST_VC_CtrlMsg :              // Cancel or error response without payload
+STRUCT
+    MessageType : E_VC_MsgType;
+    MethodId    : UINT;
+    CallId      : UDINT;
+    Status      : UINT;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.21">
+  <GVL Name="GVL_VC_Methods" Id="{d05f28d1-106e-4537-aac4-df50fbd077a6}">
+    <Declaration><![CDATA[VAR_GLOBAL CONSTANT
+// ===== GENERATED PART (normally written by vcgen) - hand-written stand-in for testing =====
+// Hash = CRC-32 (IEEE, as zlib) over the canonical signature, SPS-Konzept 4.5:
+//   10|StartInspection|App|UInt16,String32|Bool,Int32,UInt16,Float32[16]
+//   500|ReportModuleState|Plc|UInt16,Int32|
+//   600|MoveToPosition|Plc|Float64|Bool
+// ASSUMPTION: VisionCore computes the same CRC variant and string. If not, HelloAck returns
+// MethodState 2 and calls fail with ErrorId 2 -> copy the hashes from the VisionCore build.
+    VC_METHOD_COUNT            : UINT := 3;
+
+    // Method index = position in VC_METHODS (used by all blocks)
+    VC_IDX_START_INSPECTION    : UINT := 0;
+    VC_IDX_REPORT_MODULE_STATE : UINT := 1;
+    VC_IDX_MOVE_TO_POSITION    : UINT := 2;
+
+    // ASSUMPTION: project interface name, confirm with VisionCore configuration
+    VC_INTERFACES : ARRAY[0..3] OF STRING(47) := ['VisionCore.Platform', 'Stent.Line1', '', ''];
+
+    VC_METHODS : ARRAY[0..VC_MAX_METHODS - 1] OF ST_VC_MethodInfo := [
+        // StartInspection: args UInt16 + String32 = 34; result Bool+Int32+UInt16+16xFloat32 = 71
+        (MethodId := 10,  Hash := 16#A1EFD4EB, Provider := 0, TimeoutMs := 10000, ArgsLen := 34, ResultLen := 71),
+        // ReportModuleState: args UInt16 + Int32 = 6; no result
+        (MethodId := 500, Hash := 16#18245D80, Provider := 1, TimeoutMs := 200,   ArgsLen := 6,  ResultLen := 0),
+        // MoveToPosition: args Float64 = 8; result Bool = 1. ASSUMPTION: timeout 5000 ms
+        (MethodId := 600, Hash := 16#689DF4EB, Provider := 1, TimeoutMs := 5000,  ArgsLen := 8,  ResultLen := 1)
+    ];
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_GetString" Id="{3b1108de-2fed-4c17-856f-c81884c41de2}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_GetString : STRING(255)
+// Reads a fixed-length wire string of Len bytes. Assign the result to STRING(Len-1).
+VAR_IN_OUT
+    Buf   : ARRAY[*] OF BYTE;
+    Pos   : UDINT;
+END_VAR
+VAR_INPUT
+    Len   : UDINT;
+END_VAR
+VAR
+    sTmp  : STRING(255);
+    nHigh : DINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[MEMSET(destAddr := ADR(sTmp), fillByte := 0, n := SIZEOF(sTmp));
+nHigh := UPPER_BOUND(Buf, 1);
+IF (Len > 0) AND (LOWER_BOUND(Buf, 1) = 0) AND (nHigh >= 0) AND ((Pos + Len) <= (DINT_TO_UDINT(nHigh) + 1)) THEN
+    MEMCPY(destAddr := ADR(sTmp), srcAddr := ADR(Buf[Pos]), n := MIN(Len, 255));
+    Pos := Pos + Len;
+END_IF
+VC_GetString := sTmp;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

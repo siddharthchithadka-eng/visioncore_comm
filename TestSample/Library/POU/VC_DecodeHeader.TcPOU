@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_DecodeHeader" Id="{05ce86b6-0e42-45f1-a066-c1fe24234fe9}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_DecodeHeader : ST_VC_Header
+VAR_IN_OUT
+    Buf   : ARRAY[*] OF BYTE;
+END_VAR
+VAR
+    stHdr : ST_VC_Header;
+    nPos  : UDINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[nPos := 0;
+VC_GetRaw(Buf := Buf, Pos := nPos, pDst := ADR(stHdr), Size := VC_HEADER_LEN);
+VC_DecodeHeader := stHdr;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_GetInt8" Id="{f5fdc942-f272-426e-8fc3-2911677a06d4}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_GetInt8 : SINT
+// Reads Int8 (1 byte, little-endian) from Buf[Pos] and advances Pos.
+VAR_IN_OUT
+    Buf   : ARRAY[*] OF BYTE;
+    Pos   : UDINT;
+END_VAR
+VAR
+    nVal : SINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[nVal := 0;
+VC_GetRaw(Buf := Buf, Pos := Pos, pDst := ADR(nVal), Size := 1);
+VC_GetInt8 := nVal;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

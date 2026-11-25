@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="E_VC_SlotState" Id="{059ec7ec-f184-4030-a824-ae8c26f87a3a}">
+    <Declaration><![CDATA[TYPE E_VC_SlotState :
+(
+    VC_SS_FREE           := 0,
+    VC_SS_RESERVED       := 1,   // Out: block owns slot
+    VC_SS_TX_PENDING     := 2,   // Out: request ready to send
+    VC_SS_SENT           := 3,   // Out: request sent, waiting for response
+    VC_SS_CANCEL_PENDING := 4,   // Out: Cancel must be sent
+    VC_SS_DONE           := 5,   // Out: response or error available
+    VC_SS_REQUEST        := 10,  // In:  request received, no handler yet
+    VC_SS_IN_PROGRESS    := 11,  // In:  handler working
+    VC_SS_RESPONSE_READY := 12   // In:  response ready to send
+) UINT;
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

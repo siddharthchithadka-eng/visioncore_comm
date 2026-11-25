@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_CompleteInSlot" Id="{d6fc1e53-2245-406b-968a-e64e9142d6c0}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_CompleteInSlot : BOOL
+// IN_PROGRESS -> RESPONSE_READY. Len is ignored (0) when Status <> 0.
+VAR_IN_OUT
+    Link   : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    Slot   : INT;
+    Status : UINT;
+    Len    : UDINT;
+END_VAR
+VAR
+    nIdx    : UINT;
+    nStatus : UINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[VC_CompleteInSlot := FALSE;
+IF (Slot < 0) OR (Slot >= UINT_TO_INT(VC_MAX_CALLS)) THEN
+    RETURN;
+END_IF
+IF Link.InSlots[Slot].State <> VC_SS_IN_PROGRESS THEN
+    RETURN;
+END_IF
+nIdx := Link.InSlots[Slot].MethodIndex;
+nStatus := Status;
+IF (nStatus = VC_STATUS_OK) AND (Len <> VC_METHODS[nIdx].ResultLen) THEN
+    nStatus := VC_STATUS_INTERNAL_ERROR;     // generator / table mismatch
+END_IF
+Link.InSlots[Slot].Status := nStatus;
+IF nStatus = VC_STATUS_OK THEN
+    Link.InSlots[Slot].PayloadLen := Len;
+ELSE
+    Link.InSlots[Slot].PayloadLen := 0;
+END_IF
+Link.InSlots[Slot].State := VC_SS_RESPONSE_READY;
+VC_CompleteInSlot := TRUE;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

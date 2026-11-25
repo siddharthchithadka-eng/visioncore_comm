@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_ReleaseOutSlot" Id="{24ace9f8-34f0-4d8f-8003-2064410c4d03}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_ReleaseOutSlot : BOOL
+VAR_IN_OUT
+    Link : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    Slot : INT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[VC_ReleaseOutSlot := FALSE;
+IF (Slot < 0) OR (Slot >= UINT_TO_INT(VC_MAX_CALLS)) THEN
+    RETURN;
+END_IF
+Link.OutSlots[Slot].State      := VC_SS_FREE;
+Link.OutSlots[Slot].Status     := VC_STATUS_OK;
+Link.OutSlots[Slot].PayloadLen := 0;
+VC_ReleaseOutSlot := TRUE;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

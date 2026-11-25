@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <GVL Name="GVL_VC" Id="{116fb519-5010-436a-8702-082f9d29e6eb}">
+    <Declaration><![CDATA[VAR_GLOBAL
+    LinkData : ST_VC_LinkData;   // one per VisionCore connection, ~80 KB
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

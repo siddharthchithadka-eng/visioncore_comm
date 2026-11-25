@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_EncodeHeader" Id="{0485c679-e5e6-4422-b71e-856c581ad25c}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_EncodeHeader : BOOL
+// Beckhoff: little-endian, packed struct copied 1:1 (Bausteindesign section 11)
+VAR_IN_OUT
+    Buf  : ARRAY[*] OF BYTE;
+END_VAR
+VAR_INPUT
+    Hdr  : ST_VC_Header;
+END_VAR
+VAR
+    nPos : UDINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[nPos := 0;
+VC_EncodeHeader := VC_PutRaw(Buf := Buf, Pos := nPos, pSrc := ADR(Hdr), Size := VC_HEADER_LEN);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

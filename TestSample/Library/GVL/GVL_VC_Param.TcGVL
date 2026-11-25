@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <GVL Name="GVL_VC_Param" Id="{93122715-b8b2-44cd-8a1b-1c31686ed424}">
+    <Declaration><![CDATA[VAR_GLOBAL CONSTANT
+    // ---- Protocol (fixed, SPS-Konzept section 5) ----
+    VC_MAGIC              : UINT  := 16#5643;   // 'VC'
+    VC_PROTOCOL_VERSION   : USINT := 1;
+    VC_HEADER_LEN         : UDINT := 20;
+    VC_HELLO_ACK_LEN      : UDINT := 65;        // Accepted + 64 x MethodState
+    VC_PROVIDER_APP       : USINT := 0;
+    VC_PROVIDER_PLC       : USINT := 1;
+
+    // ---- Parameters (Bausteindesign section 3) ----
+    VC_MAX_PAYLOAD        : UDINT := 4096;
+    VC_MAX_CALLS          : UINT  := 8;
+    VC_MAX_METHODS        : UINT  := 64;        // must stay 64: Hello/HelloAck carry 64 entries
+    VC_RX_BUFFER          : UDINT := 2 * (VC_HEADER_LEN + VC_MAX_PAYLOAD);
+    VC_CTRL_QUEUE         : UINT  := 16;
+    VC_MSG_PER_CYCLE      : UINT  := 4;
+    VC_HELLO_TIMEOUT_MS   : UDINT := 5000;
+    VC_HEARTBEAT_MS       : UDINT := 1000;
+    VC_WATCHDOG_MS        : UDINT := 3000;
+    VC_RETRY_MS           : UDINT := 2000;
+    VC_OWNER_TIMEOUT_MS   : UDINT := 1000;
+
+    // ---- Status codes (SPS-Konzept 5.7) ----
+    VC_STATUS_OK                  : UINT := 0;
+    VC_STATUS_UNKNOWN_METHOD      : UINT := 1;
+    VC_STATUS_METHOD_INCOMPATIBLE : UINT := 2;
+    VC_STATUS_NOT_ALLOWED         : UINT := 3;
+    VC_STATUS_INVALID_PAYLOAD     : UINT := 4;
+    VC_STATUS_BUSY                : UINT := 5;
+    VC_STATUS_CANCELLED           : UINT := 6;
+    VC_STATUS_TIMEOUT             : UINT := 7;
+    VC_STATUS_CONNECTION_LOST     : UINT := 8;
+    VC_STATUS_INTERNAL_ERROR      : UINT := 9;
+
+    // ---- VC_Link.ErrorId (Bausteindesign section 8) ----
+    VC_ERR_CONNECT         : UINT := 1;   // connect / listen / accept failed
+    VC_ERR_HELLO_TIMEOUT   : UINT := 2;   // no HelloAck in time
+    VC_ERR_HELLO_REJECTED  : UINT := 3;   // HelloAck Accepted = FALSE
+    VC_ERR_PROTOCOL        : UINT := 4;   // invalid header / unexpected message
+    VC_ERR_WATCHDOG        : UINT := 5;   // nothing received
+    VC_ERR_SEND            : UINT := 6;
+    VC_ERR_RECEIVE         : UINT := 7;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

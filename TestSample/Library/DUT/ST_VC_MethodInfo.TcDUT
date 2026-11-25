@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_VC_MethodInfo" Id="{2e2d3b7f-2ace-4659-81d3-57b0f151b445}">
+    <Declaration><![CDATA[TYPE ST_VC_MethodInfo :
+STRUCT
+    MethodId  : UINT;
+    Hash      : UDINT;   // CRC-32 of canonical signature (generated)
+    Provider  : USINT;   // 0 = App, 1 = Plc
+    TimeoutMs : UDINT;
+    ArgsLen   : UDINT;   // request payload length
+    ResultLen : UDINT;   // response payload length at status 0
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

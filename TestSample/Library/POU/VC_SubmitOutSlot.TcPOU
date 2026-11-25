@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_SubmitOutSlot" Id="{a5aa288b-e1ea-46dc-bb77-5e22bf846da2}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_SubmitOutSlot : BOOL
+// RESERVED -> TX_PENDING. Assigns CallId. TimeoutMs = 0 takes the table value.
+VAR_IN_OUT
+    Link      : ST_VC_LinkData;
+END_VAR
+VAR_INPUT
+    Slot      : INT;
+    Len       : UDINT;
+    TimeoutMs : UDINT;
+END_VAR
+VAR
+    nIdx : UINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[VC_SubmitOutSlot := FALSE;
+IF (Slot < 0) OR (Slot >= UINT_TO_INT(VC_MAX_CALLS)) THEN
+    RETURN;
+END_IF
+IF Link.OutSlots[Slot].State <> VC_SS_RESERVED THEN
+    RETURN;
+END_IF
+nIdx := Link.OutSlots[Slot].MethodIndex;
+
+// Guard against generator / table mismatch
+IF Len <> VC_METHODS[nIdx].ArgsLen THEN
+    Link.OutSlots[Slot].Status     := VC_STATUS_INVALID_PAYLOAD;
+    Link.OutSlots[Slot].PayloadLen := 0;
+    Link.OutSlots[Slot].State      := VC_SS_DONE;
+    RETURN;
+END_IF
+
+IF (Link.NextCallId = 0) OR (Link.NextCallId > 16#7FFFFFFF) THEN
+    Link.NextCallId := 1;
+END_IF
+Link.OutSlots[Slot].CallId := Link.NextCallId;
+Link.NextCallId := Link.NextCallId + 1;
+IF Link.NextCallId > 16#7FFFFFFF THEN
+    Link.NextCallId := 1;
+END_IF
+
+Link.OutSlots[Slot].PayloadLen := Len;
+IF TimeoutMs = 0 THEN
+    Link.OutSlots[Slot].TimeoutMs := VC_METHODS[nIdx].TimeoutMs;
+ELSE
+    Link.OutSlots[Slot].TimeoutMs := TimeoutMs;
+END_IF
+Link.OutSlots[Slot].StartMs := Link.NowMs;
+Link.OutSlots[Slot].State   := VC_SS_TX_PENDING;
+VC_SubmitOutSlot := TRUE;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

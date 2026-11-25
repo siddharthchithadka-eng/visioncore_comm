@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.21">
+  <POU Name="VC_Handle_MoveToPosition" Id="{5ed1a89d-1e7b-4e10-8533-468e394a8093}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK VC_Handle_MoveToPosition
+// GENERATED (vcgen template, Bausteindesign 10.2). Provides PLC method 600 MoveToPosition.
+// Call every cycle. NewRequest stays TRUE until a rising edge of Respond.
+VAR_INPUT
+    Respond        : BOOL;
+    ResponseStatus : UINT;        // 0 or business error code (>= 5000 for project errors)
+    Result         : ST_VC_MoveToPositionResult;
+END_VAR
+VAR_IN_OUT
+    Link           : ST_VC_LinkData;
+END_VAR
+VAR_OUTPUT
+    NewRequest      : BOOL;
+    Args            : ST_VC_MoveToPositionArgs;
+    CancelRequested : BOOL;
+END_VAR
+VAR CONSTANT
+    METHOD_INDEX : UINT := VC_IDX_MOVE_TO_POSITION;
+END_VAR
+VAR
+    rResp  : R_TRIG;
+    slot   : INT := -1;
+    callId : UDINT;
+    pos    : UDINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Link.HandlerSeenMs[METHOD_INDEX] := Link.NowMs;   // handler is active
+rResp(CLK := Respond);
+
+IF slot < 0 THEN
+    slot := VC_TakeInSlot(Link := Link, MethodIndex := METHOD_INDEX);   // REQUEST -> IN_PROGRESS
+    IF slot >= 0 THEN
+        callId := Link.InSlots[slot].CallId;
+        pos := 0;
+        Args.Position := VC_GetFloat64(Buf := Link.InSlots[slot].Payload, Pos := pos);   // generated
+        NewRequest := TRUE;
+    END_IF
+END_IF
+
+IF slot >= 0 THEN
+    // slot lost (deadline, connection loss)?
+    IF (Link.InSlots[slot].State <> VC_SS_IN_PROGRESS) OR (Link.InSlots[slot].CallId <> callId) THEN
+        slot := -1; NewRequest := FALSE; CancelRequested := FALSE;
+    ELSE
+        CancelRequested := Link.InSlots[slot].CancelRequested;
+        IF rResp.Q THEN
+            pos := 0;
+            IF ResponseStatus = VC_STATUS_OK THEN
+                VC_PutBool(Buf := Link.InSlots[slot].Payload, Pos := pos, Value := Result.Accepted);   // generated
+            END_IF
+            VC_CompleteInSlot(Link := Link, Slot := slot, Status := ResponseStatus, Len := pos);   // -> RESPONSE_READY
+            slot := -1; NewRequest := FALSE; CancelRequested := FALSE;
+        END_IF
+    END_IF
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

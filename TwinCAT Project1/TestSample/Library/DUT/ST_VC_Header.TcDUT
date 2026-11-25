@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_VC_Header" Id="{ba9693e8-03b5-4783-81f6-58105481ab20}">
+    <Declaration><![CDATA[{attribute 'pack_mode' := '1'}
+TYPE ST_VC_Header :
+STRUCT
+    Magic           : UINT;    // 16#5643, little-endian on the wire (43 56)
+    ProtocolVersion : USINT;   // 1
+    MessageType     : USINT;   // E_VC_MsgType
+    Flags           : UINT;    // reserved, 0
+    MethodId        : UINT;    // 0 for Hello / Heartbeat
+    CallId          : UDINT;   // bit 31 = 1: call from VisionCore
+    PayloadLength   : UDINT;
+    Status          : UINT;    // response status, else 0
+    Reserved        : UINT;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

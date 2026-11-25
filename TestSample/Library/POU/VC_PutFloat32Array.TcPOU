@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="VC_PutFloat32Array" Id="{9149e603-b9ce-4764-be1b-97d7a7928769}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION VC_PutFloat32Array : BOOL
+VAR_IN_OUT
+    Buf   : ARRAY[*] OF BYTE;
+    Pos   : UDINT;
+    Arr   : ARRAY[*] OF REAL;
+END_VAR
+VAR_INPUT
+    Count : UDINT;
+END_VAR
+VAR
+    nLow  : DINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[nLow := LOWER_BOUND(Arr, 1);
+IF (UPPER_BOUND(Arr, 1) - nLow + 1) < UDINT_TO_DINT(Count) THEN
+    VC_PutFloat32Array := FALSE;
+    RETURN;
+END_IF
+VC_PutFloat32Array := VC_PutRaw(Buf := Buf, Pos := Pos, pSrc := ADR(Arr[nLow]), Size := Count * 4);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

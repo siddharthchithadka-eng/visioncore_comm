@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.21">
+  <POU Name="VC_Handle_ReportModuleState" Id="{8d574e22-64df-4d76-9a85-ff2d806c53a4}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK VC_Handle_ReportModuleState
+// GENERATED (vcgen template). Provides PLC method 500 ReportModuleState (no result payload).
+VAR_INPUT
+    Respond        : BOOL;
+    ResponseStatus : UINT;
+END_VAR
+VAR_IN_OUT
+    Link           : ST_VC_LinkData;
+END_VAR
+VAR_OUTPUT
+    NewRequest      : BOOL;
+    Args            : ST_VC_ReportModuleStateArgs;
+    CancelRequested : BOOL;
+END_VAR
+VAR CONSTANT
+    METHOD_INDEX : UINT := VC_IDX_REPORT_MODULE_STATE;
+END_VAR
+VAR
+    rResp  : R_TRIG;
+    slot   : INT := -1;
+    callId : UDINT;
+    pos    : UDINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Link.HandlerSeenMs[METHOD_INDEX] := Link.NowMs;
+rResp(CLK := Respond);
+
+IF slot < 0 THEN
+    slot := VC_TakeInSlot(Link := Link, MethodIndex := METHOD_INDEX);
+    IF slot >= 0 THEN
+        callId := Link.InSlots[slot].CallId;
+        pos := 0;
+        Args.State   := VC_GetUInt16(Buf := Link.InSlots[slot].Payload, Pos := pos);
+        Args.AlarmId := VC_GetInt32(Buf := Link.InSlots[slot].Payload, Pos := pos);
+        NewRequest := TRUE;
+    END_IF
+END_IF
+
+IF slot >= 0 THEN
+    IF (Link.InSlots[slot].State <> VC_SS_IN_PROGRESS) OR (Link.InSlots[slot].CallId <> callId) THEN
+        slot := -1; NewRequest := FALSE; CancelRequested := FALSE;
+    ELSE
+        CancelRequested := Link.InSlots[slot].CancelRequested;
+        IF rResp.Q THEN
+            VC_CompleteInSlot(Link := Link, Slot := slot, Status := ResponseStatus, Len := 0);
+            slot := -1; NewRequest := FALSE; CancelRequested := FALSE;
+        END_IF
+    END_IF
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>
